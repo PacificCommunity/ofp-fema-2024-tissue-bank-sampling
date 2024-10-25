@@ -1,0 +1,21 @@
+# ignore data extractions
+/data/
+
+# ignore outputs
+/results/
+/report/
+
+# ignore 
+/background/
+/notes/
+/planning/
+
+# ignore accidental R session saves
+.Rhistory
+
+# ignore hyperlinks
+*.lnk
+
+# ignore temporary .emacs backups
+.\#*
+\#*\#
