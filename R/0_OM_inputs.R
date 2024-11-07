@@ -117,6 +117,18 @@ skj_eff <- skj_eff_base %>%
 skj_eff$effort[skj_eff$effort %in% -1] <- NA
 
 
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## lookup table linking fisheries to areas
+
+skj_lk_ff <- region_fish(skj_frq)
+skj_lk_ff <- as.data.frame(skj_lk_ff)
+skj_lk_ff <- skj_lk_ff %>%
+    mutate(., across(where(is.factor), as.character)) %>%
+    mutate(., data = as.character(data)) %>%
+    select(., unit, data) %>%
+    rename(., id_fishery = unit, area = data)
+
+
 ################################################################################
 ## Save objects for parameterising skipjack operating model
 ################################################################################
@@ -130,6 +142,7 @@ skj_vb_pars <- vb_pars %>% filter(., sp_code %in% "SKJ")
 saveRDS(skj_lw_pars, file = file.path(data_path, "skj_lw_pars.rds"))
 saveRDS(skj_vb_pars, file = file.path(data_path, "skj_vb_pars.rds"))
 
+saveRDS(skj_lk_ff, file = file.path(data_path, "skj_lk_ff.rds"))
 saveRDS(skj_eff, file = file.path(data_path, "skj_eff.rds"))
 
 saveRDS(skj_sd_len, file = file.path(data_path, "skj_sd_len.rds"))
