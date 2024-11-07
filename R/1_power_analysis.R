@@ -113,19 +113,20 @@ om_pop_age %>% filter(., is.na(value))
 ## average across years
 om_pop_age <- om_pop_age %>%
   group_by(., area, qtr, age_class) %>%
-  summarise(., value = sum(value) / om_n_years) %>% data.frame(.)
+  summarise(., n = sum(value) / om_n_years) %>% data.frame(.)
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## length-at-age information
 
+## VB parameters from assessment
 om_len_at_age <- om_sd_len %>% rename(., sd_len = value)
 om_len_at_age <- om_len_at_age %>%
   mutate(., mean_len = vb_growth(age_class, L_inf = om_vb_pars$L_inf, k = om_vb_pars$k, t_0 = om_vb_pars$t_0))
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## probability matrix mapping each age-class to length-classes
+## probability matrix mapping age-classes to length-classes
 
 ## use a slightly broader upper range of length classes when estimating probabilities
 ##  - then assume largest size class from assessment is a plus group
@@ -152,14 +153,16 @@ om_age_to_len <- om_age_to_len %>% group_by(., age_class) %>% mutate(., p_len_cl
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## numbers by length-class
 
-om_pop_length <- om_pop_age %>% left_join(., om_age_to_len, by = "age_class", relationship = "many-to-many") 
-om_pop_length <- om_pop_length %>% mutate(., value = value * p_len_class)
+om_pop_length <- om_pop_age %>% left_join(., om_age_to_len, by = "age_class", relationship = "many-to-many")
+om_pop_length <- om_pop_length %>% mutate(., n = round(n * p_len_class))
 om_pop_length <- om_pop_length %>% select(., - p_len_class)
 
 
 ################################################################################
-## 
+##  
 ################################################################################
+
+
 
 
 
