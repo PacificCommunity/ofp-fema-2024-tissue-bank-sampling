@@ -101,6 +101,7 @@ skj_sd_len <- skj_sd_len %>% select(., age_class, value) %>% arrange(., age_clas
 
 skj_eff <- skj_freq %>% select(., year, month, fishery, catch, effort) %>% distinct(.)
 skj_eff <- skj_eff %>% mutate(., qtr = ceiling(month / 3)) %>% select(., - month)
+skj_eff <- skj_eff %>% mutate(., fishery = as.character(fishery))
 skj_eff <- skj_eff %>% rename(., id_fishery = fishery)
 skj_eff <- skj_eff %>% select(., year, qtr, everything())
 
