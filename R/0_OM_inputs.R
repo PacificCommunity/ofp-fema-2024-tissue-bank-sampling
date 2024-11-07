@@ -129,6 +129,20 @@ skj_lk_ff <- skj_lk_ff %>%
     rename(., id_fishery = unit, area = data)
 
 
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## range of length classes in assessment
+
+skj_lf_range <- lf_range(skj_frq)
+
+## lower limit of first length class
+skj_min_len <- skj_lf_range["LFFirst"]
+
+## cm below upper limit of last length class
+skj_max_len <- skj_min_len + (skj_lf_range["LFIntervals"] * skj_lf_range["LFWidth"]) - 1
+
+skj_lf_range <- skj_min_len:skj_max_len
+
+
 ################################################################################
 ## Save objects for parameterising skipjack operating model
 ################################################################################
@@ -141,6 +155,7 @@ skj_vb_pars <- vb_pars %>% filter(., sp_code %in% "SKJ")
 
 saveRDS(skj_lw_pars, file = file.path(data_path, "skj_lw_pars.rds"))
 saveRDS(skj_vb_pars, file = file.path(data_path, "skj_vb_pars.rds"))
+saveRDS(skj_lf_range, file = file.path(data_path, "skj_lf_range.rds"))
 
 saveRDS(skj_lk_ff, file = file.path(data_path, "skj_lk_ff.rds"))
 saveRDS(skj_eff, file = file.path(data_path, "skj_eff.rds"))
