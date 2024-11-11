@@ -51,7 +51,7 @@ om_lk_ff <- readRDS(file = file.path(data_path, paste0(tolower(sp_id), "_lk_ff.r
 
 om_sd_len <- readRDS(file = file.path(data_path, paste0(tolower(sp_id), "_sd_len.rds")))
 om_pop_age <- readRDS(file = file.path(data_path, paste0(tolower(sp_id), "_pop_n.rds")))
-om_sel <- readRDS(file = file.path(data_path, paste0(tolower(sp_id), "_sel.rds")))
+om_sel_age <- readRDS(file = file.path(data_path, paste0(tolower(sp_id), "_sel.rds")))
 om_q <- readRDS(file = file.path(data_path, paste0(tolower(sp_id), "_q.rds")))
 
 
@@ -96,10 +96,15 @@ om_q <- om_q %>%
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## selectivities
+## (age-based) selectivities
 
-om_sel <- om_sel %>% mutate(., id_fishery = as.numeric(id_fishery))
-om_sel <- om_sel %>% filter(., id_fishery %in% om_ff_ids)
+om_sel_age <- om_sel_age %>% mutate(., id_fishery = as.numeric(id_fishery))
+om_sel_age <- om_sel_age %>% filter(., id_fishery %in% om_ff_ids)
+
+## rescale selectivities
+om_sel_age <- om_sel_age %>% rename(., sel_f_raw = sel_f)
+om_sel_age <- om_sel_age %>% group_by(., id_fishery) %>%
+  mutate(., sel_f = sel_f_raw / sum(sel_f_raw)) %>% data.frame(.)
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -161,8 +166,19 @@ om_pop_length <- om_pop_length %>% select(., - p_len_class)
 om_pop_length <- om_pop_length %>% select(., area, qtr, age_class, len_class, n)
 
 
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## probability of capture with age based selectivity
+
+## p_catch = q * sel * effort
+p_catch_age <- om_q %>% left_join(., om_sel_age, by = "id_fishery", relationship = "many-to-many")
+p_catch_age <- om_eff %>% select(., - catch) %>% left_join(p_catch_age, ., by = c("id_fishery", "qtr"), relationship = "many-to-one")
+
+p_catch_age <- p_catch_age %>% mutate(., p_catch = q_f * sel_f * effort)
+range(p_catch_age$p_catch)
+
+
 ################################################################################
-##
+## 
 ################################################################################
 
 
