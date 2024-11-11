@@ -100,8 +100,11 @@ skj_sd_len <- skj_sd_len %>% select(., age_class, sd_len) %>% arrange(., age_cla
 ## extract catch and effort data
 
 skj_eff <- skj_freq %>% select(., year, month, fishery, catch, effort) %>% distinct(.)
+
+## check for duplicates
+skj_eff %>% count(., year, month, fishery) %>% count(., n)
+
 skj_eff <- skj_eff %>% mutate(., qtr = ceiling(month / 3)) %>% select(., - month)
-skj_eff <- skj_eff %>% mutate(., fishery = as.character(fishery))
 skj_eff <- skj_eff %>% rename(., id_fishery = fishery)
 skj_eff <- skj_eff %>% select(., year, qtr, everything())
 
