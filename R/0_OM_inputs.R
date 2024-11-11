@@ -68,24 +68,24 @@ skj_sd_len <- sd_laa(skj_rep)
 skj_pop_n <- as.data.frame(skj_pop_n)
 skj_pop_n <- skj_pop_n %>% mutate(., across(where(is.factor), as.character))
 skj_pop_n <- skj_pop_n %>% select(., - unit, - iter)
-skj_pop_n <- skj_pop_n %>% rename(., age_class = age, qtr = season, value = data)
+skj_pop_n <- skj_pop_n %>% rename(., age_class = age, qtr = season, n = data)
 skj_pop_n <- skj_pop_n %>% mutate(., qtr = as.numeric(qtr))
 
 skj_sel <- as.data.frame(skj_sel)
 skj_sel <- skj_sel %>% mutate(., across(where(is.factor), as.character))
 skj_sel <- skj_sel %>% select(., - year, - season, - area, - iter)
-skj_sel <- skj_sel %>% rename(., age_class = age, id_fishery = unit, value = data)
+skj_sel <- skj_sel %>% rename(., age_class = age, id_fishery = unit, sel_f = data)
 
 skj_q <- as.data.frame(skj_q)
 skj_q <- skj_q %>% mutate(., across(where(is.factor), as.character))
 skj_q <- skj_q %>% select(., - age, - area, - iter)
-skj_q <- skj_q %>% rename(., id_fishery = unit, qtr = season, value = data)
+skj_q <- skj_q %>% rename(., id_fishery = unit, qtr = season, q_f = data)
 skj_q <- skj_q %>% mutate(., qtr = as.numeric(qtr))
 
 skj_sd_len <- as.data.frame(skj_sd_len)
 skj_sd_len <- skj_sd_len %>% mutate(., across(where(is.factor), as.character))
 skj_sd_len <- skj_sd_len %>% select(., - year, - unit, - area, - iter)
-skj_sd_len <- skj_sd_len %>% rename(., qtr = season, value = data)
+skj_sd_len <- skj_sd_len %>% rename(., qtr = season, sd_len = data)
 skj_sd_len <- skj_sd_len %>% mutate(., qtr = as.numeric(qtr))
 
 
@@ -93,7 +93,7 @@ skj_sd_len <- skj_sd_len %>% mutate(., qtr = as.numeric(qtr))
 ## tidy up skj_sd_len to have consistent structure, where 'age' is age-class in quarters
 
 skj_sd_len <- skj_sd_len %>% mutate(., age_class = (age * 4) + qtr)
-skj_sd_len <- skj_sd_len %>% select(., age_class, value) %>% arrange(., age_class)
+skj_sd_len <- skj_sd_len %>% select(., age_class, sd_len) %>% arrange(., age_class)
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

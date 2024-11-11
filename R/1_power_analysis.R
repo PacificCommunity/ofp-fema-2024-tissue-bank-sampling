@@ -28,7 +28,7 @@ data_path <- file.path("../data", paste0(sp_id, "_OM_inputs"))
 om_ff_ids <- c(14:15, 19:20, 25:26, 29:30)
 om_ff_ids <- as.character(om_ff_ids)
 
-## years to use to parameterise operating model 
+## years to use to parameterise operating model
 om_year_min <- 2017
 om_year_max <- 2021
 om_n_years <- length(om_year_min:om_year_max)
@@ -85,14 +85,14 @@ om_q <- om_q %>% mutate(., id_fishery = as.numeric(id_fishery))
 om_q <- om_q %>% filter(., year >= om_year_min, year <= om_year_max, id_fishery %in% om_ff_ids)
 
 ## check for NAs
-om_q %>% filter(., is.na(value))
-om_q <- om_q %>% filter(., !is.na(value))
+om_q %>% filter(., is.na(q_f))
+om_q <- om_q %>% filter(., !is.na(q_f))
 ## remove records with NAs
 
 ## average across years
 om_q <- om_q %>%
   group_by(., id_fishery, qtr) %>%
-  summarise(., value = sum(value) / om_n_years) %>% data.frame(.)
+  summarise(., q_f = sum(q_f) / om_n_years) %>% data.frame(.)
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -108,21 +108,22 @@ om_sel <- om_sel %>% filter(., id_fishery %in% om_ff_ids)
 om_pop_age <- om_pop_age %>% filter(., year >= om_year_min, year <= om_year_max)
 
 ## check for NAs
-om_pop_age %>% filter(., is.na(value))
+om_pop_age %>% filter(., is.na(n))
 
 ## average across years
 om_pop_age <- om_pop_age %>%
   group_by(., area, qtr, age_class) %>%
-  summarise(., n = sum(value) / om_n_years) %>% data.frame(.)
+  summarise(., n = sum(n) / om_n_years) %>% data.frame(.)
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## length-at-age information
 
 ## VB parameters from assessment
-om_len_at_age <- om_sd_len %>% rename(., sd_len = value)
-om_len_at_age <- om_len_at_age %>%
-  mutate(., mean_len = vb_growth(age_class, L_inf = om_vb_pars$L_inf, k = om_vb_pars$k, t_0 = om_vb_pars$t_0))
+om_len_at_age <- om_sd_len %>% mutate(., sp_code = sp_id) %>%
+  left_join(om_vb_pars, ., by = "sp_code") %>%
+  mutate(., mean_len = vb_growth(age_class, L_inf, k, t_0)) %>%
+  select(., - sp_code)
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -133,9 +134,10 @@ om_len_at_age <- om_len_at_age %>%
 om_lf_range_estimate <- min(om_lf_range):floor(max(om_lf_range * 1.2))
 
 ## estimate probabilities
-om_age_to_len <- om_len_at_age %>% expand_grid(., len_class = om_lf_range_estimate)
-om_age_to_len <- om_age_to_len %>%
-  mutate(., p_len_class = pnorm(len_class + 1, mean = mean_len, sd = sd_len) - pnorm(len_class, mean = mean_len, sd = sd_len))
+om_age_to_len <- om_len_at_age %>% select(., age_class, mean_len, sd_len) %>% 
+  expand_grid(., len_class = om_lf_range_estimate) %>%
+  mutate(., p_len_class = pnorm(len_class + 1, mean = mean_len, sd = sd_len) -
+           pnorm(len_class, mean = mean_len, sd = sd_len))
 om_age_to_len <- om_age_to_len %>% select(., - mean_len, - sd_len)
 
 ## and make largest length class in assessment a plus group
@@ -156,10 +158,11 @@ om_age_to_len <- om_age_to_len %>% group_by(., age_class) %>% mutate(., p_len_cl
 om_pop_length <- om_pop_age %>% left_join(., om_age_to_len, by = "age_class", relationship = "many-to-many")
 om_pop_length <- om_pop_length %>% mutate(., n = round(n * p_len_class))
 om_pop_length <- om_pop_length %>% select(., - p_len_class)
+om_pop_length <- om_pop_length %>% select(., area, qtr, age_class, len_class, n)
 
 
 ################################################################################
-##  
+##
 ################################################################################
 
 
