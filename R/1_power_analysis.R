@@ -26,7 +26,6 @@ data_path <- file.path("../data", paste0(sp_id, "_OM_inputs"))
 ## fisheries to use to generate catch
 ##  - purse seine fisheries in regions 5:8
 om_ff_ids <- c(14:15, 19:20, 25:26, 29:30)
-om_ff_ids <- as.character(om_ff_ids)
 
 ## years to use to parameterise operating model
 om_year_min <- 2017
@@ -81,7 +80,6 @@ om_eff <- om_eff %>%
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## catchabilities
 
-om_q <- om_q %>% mutate(., id_fishery = as.numeric(id_fishery))
 om_q <- om_q %>% filter(., year >= om_year_min, year <= om_year_max, id_fishery %in% om_ff_ids)
 
 ## check for NAs
@@ -98,13 +96,31 @@ om_q <- om_q %>%
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## (age-based) selectivities
 
-om_sel_age <- om_sel_age %>% mutate(., id_fishery = as.numeric(id_fishery))
 om_sel_age <- om_sel_age %>% filter(., id_fishery %in% om_ff_ids)
 
 ## rescale selectivities
 om_sel_age <- om_sel_age %>% rename(., sel_f_raw = sel_f)
 om_sel_age <- om_sel_age %>% group_by(., id_fishery) %>%
   mutate(., sel_f = sel_f_raw / sum(sel_f_raw)) %>% data.frame(.)
+
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## length-at-age information
+
+## VB parameters from assessment
+om_len_at_age <- om_sd_len %>% mutate(., sp_code = sp_id) %>%
+  left_join(om_vb_pars, ., by = "sp_code") %>%
+  mutate(., mean_len = vb_growth(age_class, L_inf, k, t_0)) %>%
+  select(., - sp_code)
+
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## average weight by length class
+
+om_avg_weight <- data.frame(sp_code = sp_id, len_class = om_lf_range)
+om_avg_weight <- om_avg_weight %>% left_join(., om_lw_pars, by = "sp_code") %>%
+  mutate(., avg_kg = a * (len_class + 0.5) ^ b)
+om_avg_weight <- om_avg_weight %>% select(., - sp_code)
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -119,16 +135,6 @@ om_pop_age %>% filter(., is.na(n))
 om_pop_age <- om_pop_age %>%
   group_by(., area, qtr, age_class) %>%
   summarise(., n = sum(n) / om_n_years) %>% data.frame(.)
-
-
-##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## length-at-age information
-
-## VB parameters from assessment
-om_len_at_age <- om_sd_len %>% mutate(., sp_code = sp_id) %>%
-  left_join(om_vb_pars, ., by = "sp_code") %>%
-  mutate(., mean_len = vb_growth(age_class, L_inf, k, t_0)) %>%
-  select(., - sp_code)
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -167,14 +173,38 @@ om_pop_length <- om_pop_length %>% select(., area, qtr, age_class, len_class, n)
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## estimate catchabilities required to obtain catches (using age-based selectivities)
+
+## C = q * sel * effort * N
+## so q = C / (sel * effort * N)
+
+## combine necessary variables to estimate q
+estimate_q_f <- om_lk_ff %>% left_join(., om_pop_length, by = "area", relationship = "many-to-many")
+estimate_q_f <- estimate_q_f %>% left_join(., om_sel_age, by = c("id_fishery", "age_class"))
+estimate_q_f <- estimate_q_f %>% left_join(., om_eff, by = c("id_fishery", "qtr"))
+estimate_q_f <- estimate_q_f %>% left_join(., om_avg_weight, by = "len_class")
+
+## calculate denominator of estimate_q_f by age-class & length-class
+estimate_q_f <- estimate_q_f %>% mutate(., q_f_denom = sel_f * effort * n * avg_kg / 1E3)
+
+## calculate total denominator by fishery and quarter
+estimate_q_f <- estimate_q_f %>%
+  group_by(., id_fishery, qtr) %>%
+  summarise(., q_f_denom = sum(q_f_denom)) %>% data.frame(.)
+
+## and estimate catchability
+estimate_q_f <- estimate_q_f %>% left_join(., om_eff, by = c("id_fishery", "qtr"))
+estimate_q_f <- estimate_q_f %>% mutate(., q_f = catch / q_f_denom)
+estimate_q_f <- estimate_q_f %>% select(., id_fishery, qtr, q_f)
+
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## probability of capture with age based selectivity
 
 ## p_catch = q * sel * effort
-p_catch_age <- om_q %>% left_join(., om_sel_age, by = "id_fishery", relationship = "many-to-many")
+p_catch_age <- estimate_q_f %>% left_join(., om_sel_age, by = "id_fishery", relationship = "many-to-many")
 p_catch_age <- om_eff %>% select(., - catch) %>% left_join(p_catch_age, ., by = c("id_fishery", "qtr"), relationship = "many-to-one")
-
 p_catch_age <- p_catch_age %>% mutate(., p_catch = q_f * sel_f * effort)
-range(p_catch_age$p_catch)
 
 
 ################################################################################
