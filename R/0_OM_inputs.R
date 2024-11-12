@@ -69,24 +69,25 @@ skj_pop_n <- as.data.frame(skj_pop_n)
 skj_pop_n <- skj_pop_n %>% mutate(., across(where(is.factor), as.character))
 skj_pop_n <- skj_pop_n %>% select(., - unit, - iter)
 skj_pop_n <- skj_pop_n %>% rename(., age_class = age, qtr = season, n = data)
-skj_pop_n <- skj_pop_n %>% mutate(., qtr = as.numeric(qtr))
+skj_pop_n <- skj_pop_n %>% mutate(., area = as.integer(area), qtr = as.integer(qtr))
 
 skj_sel <- as.data.frame(skj_sel)
 skj_sel <- skj_sel %>% mutate(., across(where(is.factor), as.character))
 skj_sel <- skj_sel %>% select(., - year, - season, - area, - iter)
 skj_sel <- skj_sel %>% rename(., age_class = age, id_fishery = unit, sel_f = data)
+skj_sel <- skj_sel %>% mutate(., id_fishery = as.integer(id_fishery))
 
 skj_q <- as.data.frame(skj_q)
 skj_q <- skj_q %>% mutate(., across(where(is.factor), as.character))
 skj_q <- skj_q %>% select(., - age, - area, - iter)
 skj_q <- skj_q %>% rename(., id_fishery = unit, qtr = season, q_f = data)
-skj_q <- skj_q %>% mutate(., qtr = as.numeric(qtr))
+skj_q <- skj_q %>% mutate(., id_fishery = as.integer(id_fishery), qtr = as.integer(qtr))
 
 skj_sd_len <- as.data.frame(skj_sd_len)
 skj_sd_len <- skj_sd_len %>% mutate(., across(where(is.factor), as.character))
 skj_sd_len <- skj_sd_len %>% select(., - year, - unit, - area, - iter)
 skj_sd_len <- skj_sd_len %>% rename(., qtr = season, sd_len = data)
-skj_sd_len <- skj_sd_len %>% mutate(., qtr = as.numeric(qtr))
+skj_sd_len <- skj_sd_len %>% mutate(., qtr = as.integer(qtr))
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -127,7 +128,7 @@ skj_lk_ff <- region_fish(skj_frq)
 skj_lk_ff <- as.data.frame(skj_lk_ff)
 skj_lk_ff <- skj_lk_ff %>%
     mutate(., across(where(is.factor), as.character)) %>%
-    mutate(., data = as.character(data)) %>%
+    mutate(., unit = as.integer(unit), data = as.integer(data)) %>%
     select(., unit, data) %>%
     rename(., id_fishery = unit, area = data)
 
