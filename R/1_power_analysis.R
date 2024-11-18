@@ -189,12 +189,20 @@ om_avg_weight <- om_avg_weight %>% select(., - sp_code)
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## length-at-age information
 
-## get mean len and CV by length class
+## get mean len and SD of len by length class
 om_len_at_age <- om_sd_len %>% mutate(., sp_code = sp_id) %>%
-  left_join(om_vb_pars, ., by = "sp_code") %>%
+  left_join(om_vb_pars, ., by = "sp_code", relationship = "many-to-many") %>%
   mutate(., mean_len = vb_growth(age_class, L_inf, k, t_0)) %>%
+  select(., id_growth, age_class, mean_len, sd_len)
+
+## get CV of length at age from MFCL growth curve
+om_cv_len <- om_len_at_age %>% filter(., id_growth == 1) %>%
   mutate(., cv_len = sd_len / mean_len) %>%
-  select(., age_class, mean_len, sd_len, cv_len)
+  select(., age_class, cv_len)
+
+## apply CVs to all growth curves and drop sd_len
+om_len_at_age <- om_len_at_age %>% left_join(., om_cv_len, by = "age_class", relationship = "many-to-one")
+om_len_at_age <- om_len_at_age %>% select(., - sd_len)
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
