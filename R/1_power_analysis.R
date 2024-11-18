@@ -5,11 +5,14 @@
 ## Set timezone to UTC, to prevent automatic conversion from UTC to local time
 Sys.setenv(TZ="UTC")
 
+library(ggplot2)
 library(dplyr)
 library(tidyr)
 
 source('general_utils.R')
 source('simulation_utils.R')
+
+theme_set(theme_bw())
 
 
 ################################################################################
@@ -111,7 +114,7 @@ om_sel_age <- om_sel_age %>% group_by(., id_fishery) %>%
 om_len_at_age <- om_sd_len %>% mutate(., sp_code = sp_id) %>%
   left_join(om_vb_pars, ., by = "sp_code") %>%
   mutate(., mean_len = vb_growth(age_class, L_inf, k, t_0)) %>%
-  select(., - sp_code)
+  select(., age_class, mean_len, sd_len)
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -166,10 +169,10 @@ om_age_to_len <- om_age_to_len %>% group_by(., age_class) %>% mutate(., p_len_cl
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## numbers by length-class
 
-om_pop_length <- om_pop_age %>% left_join(., om_age_to_len, by = "age_class", relationship = "many-to-many")
-om_pop_length <- om_pop_length %>% mutate(., n = round(n * p_len_class))
-om_pop_length <- om_pop_length %>% select(., - p_len_class)
-om_pop_length <- om_pop_length %>% select(., area, qtr, age_class, len_class, n)
+om_pop_len <- om_pop_age %>% left_join(., om_age_to_len, by = "age_class", relationship = "many-to-many")
+om_pop_len <- om_pop_len %>% mutate(., n = round(n * p_len_class))
+om_pop_len <- om_pop_len %>% select(., - p_len_class)
+om_pop_len <- om_pop_len %>% select(., area, qtr, age_class, len_class, n)
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -179,7 +182,7 @@ om_pop_length <- om_pop_length %>% select(., area, qtr, age_class, len_class, n)
 ## so q = C / (sel * effort * N)
 
 ## combine necessary variables to estimate q
-estimate_q_f <- om_lk_ff %>% left_join(., om_pop_length, by = "area", relationship = "many-to-many")
+estimate_q_f <- om_lk_ff %>% left_join(., om_pop_len, by = "area", relationship = "many-to-many")
 estimate_q_f <- estimate_q_f %>% left_join(., om_sel_age, by = c("id_fishery", "age_class"))
 estimate_q_f <- estimate_q_f %>% left_join(., om_eff, by = c("id_fishery", "qtr"))
 estimate_q_f <- estimate_q_f %>% left_join(., om_avg_weight, by = "len_class")
@@ -205,6 +208,34 @@ estimate_q_f <- estimate_q_f %>% select(., id_fishery, qtr, q_f)
 p_catch_age <- estimate_q_f %>% left_join(., om_sel_age, by = "id_fishery", relationship = "many-to-many")
 p_catch_age <- om_eff %>% select(., - catch) %>% left_join(p_catch_age, ., by = c("id_fishery", "qtr"), relationship = "many-to-one")
 p_catch_age <- p_catch_age %>% mutate(., p_catch = q_f * sel_f * effort)
+p_catch_age <- p_catch_age %>% select(., id_fishery, qtr, age_class, p_catch)
+
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## probability of capture with length based selectivity
+##  - derived from age based selectivity
+
+om_sel_len <- om_sel_age %>% left_join(., om_lk_ff, by = "id_fishery")
+om_sel_len <- om_pop_len %>%
+  group_by(., area, age_class, len_class) %>%
+  summarise(n = sum(n)) %>% data.frame(.) %>%
+  left_join(om_sel_len, ., by = c("area", "age_class"), relationship = "many-to-many")
+
+## and calculate weighted selectivity by length class (across age classes)
+om_sel_len <- om_sel_len %>%
+  group_by(., id_fishery, len_class) %>%
+  summarise(., sel_f = sum(sel_f * n) / sum(n)) %>% data.frame(.)
+
+## rescale to sum to one
+om_sel_len <- om_sel_len %>% group_by(., id_fishery) %>%
+  mutate(., sel_f = sel_f / sum(sel_f)) %>% data.frame(.)
+
+## estimated length-class specific selectivities (for comparison with assessment report)
+om_sel_len %>% ggplot(.) +
+  geom_line(aes(x = len_class, y = sel_f)) +
+  facet_wrap(vars(id_fishery), ncol = 2)
+
+graphics.off()
 
 
 ################################################################################
