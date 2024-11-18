@@ -41,20 +41,18 @@ om_n_years <- length(om_year_min:om_year_max)
 
 ## one growth curve
 vb_classes <- 1L
-vb_mult_k <- 1
-vb_mult_Linf <- 1
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## multiple growth curve scenario
 
 vb_classes <- 2L
-vb_mult_k <- 1.2
-vb_mult_Linf <- 0.8
+vb_diff_k <- 0.2
+vb_diff_Linf <- -0.2
 
 ## intercept (a) and slope (b) in function that defines membership probabilities per MFCL area
-id_growth_a <- 0.5
-id_growth_b <- 0.25
+id_growth_a <- 0.75
+id_growth_b <- -0.25
 
 ## function to specify probability of belonging to first VB class
 ##  - linear function of area (x) of the form a + b * (standardised) x
@@ -84,12 +82,13 @@ assign_id_growth_prob <- function(x, a, b) {
 
 om_lf_range <- readRDS(file = file.path(data_path, paste0(tolower(sp_id), "_lf_range.rds")))
 om_lw_pars <- readRDS(file = file.path(data_path, paste0(tolower(sp_id), "_lw_pars.rds")))
-om_vb_pars <- readRDS(file = file.path(data_path, paste0(tolower(sp_id), "_vb_pars.rds")))
+
+mfcl_vb_pars <- readRDS(file = file.path(data_path, paste0(tolower(sp_id), "_vb_pars.rds")))
+mfcl_sd_len <- readRDS(file = file.path(data_path, paste0(tolower(sp_id), "_sd_len.rds")))
 
 om_eff <- readRDS(file = file.path(data_path, paste0(tolower(sp_id), "_eff.rds")))
 om_lk_ff <- readRDS(file = file.path(data_path, paste0(tolower(sp_id), "_lk_ff.rds")))
 
-om_sd_len <- readRDS(file = file.path(data_path, paste0(tolower(sp_id), "_sd_len.rds")))
 om_pop_age <- readRDS(file = file.path(data_path, paste0(tolower(sp_id), "_pop_n.rds")))
 om_sel_age <- readRDS(file = file.path(data_path, paste0(tolower(sp_id), "_sel.rds")))
 om_q <- readRDS(file = file.path(data_path, paste0(tolower(sp_id), "_q.rds")))
@@ -113,8 +112,8 @@ if(vb_classes == 2) lk_growth_probs <- set_growth_class_probs(lk_growth_probs, a
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## create alternative VB curves
 
-om_vb_pars <- om_vb_pars %>% mutate(., id_growth = 1L) %>% select(., id_growth, everything())
-if(vb_classes == 2) om_vb_pars <- adjust_vb_pars(om_vb_pars, vb_mult_Linf, vb_mult_k)
+om_vb_pars <- mfcl_vb_pars %>% mutate(., id_growth = 1L) %>% select(., id_growth, everything())
+if(vb_classes == 2) om_vb_pars <- adjust_vb_pars(om_vb_pars, vb_diff_Linf, vb_diff_k)
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -187,48 +186,76 @@ om_avg_weight <- om_avg_weight %>% select(., - sp_code)
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## length-at-age information
+## mean and CV of length-at-age by MFCL growth curve(s)
 
-## get mean len and SD of len by length class
-om_len_at_age <- om_sd_len %>% mutate(., sp_code = sp_id) %>%
-  left_join(om_vb_pars, ., by = "sp_code", relationship = "many-to-many") %>%
+mfcl_len_at_age <- mfcl_sd_len %>% mutate(., sp_code = sp_id) %>%
+  left_join(mfcl_vb_pars, ., by = "sp_code", relationship = "many-to-many") %>%
   mutate(., mean_len = vb_growth(age_class, L_inf, k, t_0)) %>%
-  select(., id_growth, age_class, mean_len, sd_len)
-
-## get CV of length at age from MFCL growth curve
-om_cv_len <- om_len_at_age %>% filter(., id_growth == 1) %>%
   mutate(., cv_len = sd_len / mean_len) %>%
-  select(., age_class, cv_len)
+  select(., age_class, mean_len, cv_len)
 
-## apply CVs to all growth curves and drop sd_len
-om_len_at_age <- om_len_at_age %>% left_join(., om_cv_len, by = "age_class", relationship = "many-to-one")
-om_len_at_age <- om_len_at_age %>% select(., - sd_len)
+mfcl_cv_len <- mfcl_len_at_age %>% select(., age_class, cv_len)
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## probability matrix mapping age-classes to length-classes
+## mean and CV of length-at-age by OM growth curve(s)
+
+om_len_at_age <- mfcl_cv_len %>% mutate(., sp_code = sp_id) %>%
+  left_join(om_vb_pars, ., by = "sp_code", relationship = "many-to-many") %>%
+  mutate(., mean_len = vb_growth(age_class, L_inf, k, t_0)) %>%
+  select(., id_growth, age_class, mean_len, cv_len)
+
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## probability matrix mapping age-classes to length-classes with mfcl growth curve
 
 ## use a slightly broader upper range of length classes when estimating probabilities
 ##  - then assume largest size class from assessment is a plus group
 om_lf_range_estimate <- min(om_lf_range):floor(max(om_lf_range * 1.2))
 
 ## estimate probabilities
+mfcl_age_to_len <- mfcl_len_at_age %>%
+  expand_grid(., len_class = om_lf_range_estimate) %>%
+  mutate(., p_len_class = pnorm(len_class + 1, mean = mean_len, sd = cv_len * mean_len) -
+           pnorm(len_class, mean = mean_len, sd = cv_len * mean_len))
+mfcl_age_to_len <- mfcl_age_to_len %>% select(., - mean_len, - cv_len)
+
+## and make largest length class in assessment a plus group
+mfcl_age_to_len <- mfcl_age_to_len %>% mutate(., len_class = pmin(len_class, max(om_lf_range)))
+mfcl_age_to_len <- mfcl_age_to_len %>% group_by(., age_class, len_class) %>%
+  summarise(., p_len_class = sum(p_len_class)) %>% data.frame(.)
+
+## check probabilities sum (approximately) to one
+##  - this would be the case if smallest length class was a "plus group"
+mfcl_age_to_len %>% group_by(., age_class) %>% summarise(., p_len_class = sum(p_len_class))
+
+## rescale probabilities so that they do sum to one
+mfcl_age_to_len <- mfcl_age_to_len %>% group_by(., age_class) %>%
+  mutate(., p_len_class = p_len_class / sum(p_len_class)) %>% data.frame(.)
+
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## probability matrix mapping age-classes to length-classes with OM growth curve(s)
+
+## estimate probabilities
 om_age_to_len <- om_len_at_age %>%
   expand_grid(., len_class = om_lf_range_estimate) %>%
   mutate(., p_len_class = pnorm(len_class + 1, mean = mean_len, sd = cv_len * mean_len) -
            pnorm(len_class, mean = mean_len, sd = cv_len * mean_len))
-om_age_to_len <- om_age_to_len %>% select(., - mean_len, - sd_len, - cv_len)
+om_age_to_len <- om_age_to_len %>% select(., - mean_len, - cv_len)
 
 ## and make largest length class in assessment a plus group
 om_age_to_len <- om_age_to_len %>% mutate(., len_class = pmin(len_class, max(om_lf_range)))
-om_age_to_len <- om_age_to_len %>% group_by(., age_class, len_class) %>% summarise(., p_len_class = sum(p_len_class)) %>% data.frame(.)
+om_age_to_len <- om_age_to_len %>% group_by(., id_growth, age_class, len_class) %>%
+  summarise(., p_len_class = sum(p_len_class)) %>% data.frame(.)
 
 ## check probabilities sum (approximately) to one
 ##  - this would be the case if smallest length class was a "plus group"
-om_age_to_len %>% group_by(., age_class) %>% summarise(., p_len_class = sum(p_len_class))
+om_age_to_len %>% group_by(., id_growth, age_class) %>% summarise(., p_len_class = sum(p_len_class))
 
 ## rescale probabilities so that they do sum to one
-om_age_to_len <- om_age_to_len %>% group_by(., age_class) %>% mutate(., p_len_class = p_len_class / sum(p_len_class)) %>% data.frame(.)
+om_age_to_len <- om_age_to_len %>% group_by(., id_growth, age_class) %>%
+  mutate(., p_len_class = p_len_class / sum(p_len_class)) %>% data.frame(.)
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
