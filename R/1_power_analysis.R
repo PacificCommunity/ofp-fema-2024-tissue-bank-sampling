@@ -36,6 +36,44 @@ om_year_max <- 2021
 om_n_years <- length(om_year_min:om_year_max)
 
 
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## single growth curve scenario
+
+## one growth curve
+vb_classes <- 1L
+vb_mult_k <- 1
+vb_mult_Linf <- 1
+
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## multiple growth curve scenario
+
+vb_classes <- 2L
+vb_mult_k <- 1.2
+vb_mult_Linf <- 0.8
+
+## intercept (a) and slope (b) in function that defines membership probabilities per MFCL area
+id_growth_a <- 0.5
+id_growth_b <- 0.25
+
+## function to specify probability of belonging to first VB class
+##  - linear function of area (x) of the form a + b * (standardised) x
+assign_id_growth_prob <- function(x, a, b) {
+  # for western and central temperate regions, assign proxy region IDs
+  x[x %in% c(1, 3)] <- 5
+  x[x %in% c(2, 4)] <- 7.5
+
+  if(max(a + abs(b)) > 1) stop("reduce strength of gradient! prob > 1")
+  if(min(a - abs(b)) < 0) stop("reduce strength of gradient! prob < 0")
+
+  ## rescale area ID to go from 0 to 1
+  x_range <- range(x, na.rm = TRUE)
+  x <- (x - x_range[1]) / (x_range[2] - x_range[1])
+
+  a + b * x
+}
+
+
 ################################################################################
 ## Create inputs to operating model
 ################################################################################
@@ -60,6 +98,24 @@ om_q <- readRDS(file = file.path(data_path, paste0(tolower(sp_id), "_q.rds")))
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## prepare inputs for use in operating model
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+## get all areas in simulated population
+areas <- om_pop_age %>% select(area) %>% distinct() %>% with(area)
+
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## probabilities of belonging to a specific growth class
+
+lk_growth_probs <- expand_grid(area = areas, id_growth = 1, vb_prop = 1)
+if(vb_classes == 2) lk_growth_probs <- set_growth_class_probs(lk_growth_probs, a_int = id_growth_a, b_slope = id_growth_b)
+
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## create alternative VB curves
+
+om_vb_pars <- om_vb_pars %>% mutate(., id_growth = 1L) %>% select(., id_growth, everything())
+if(vb_classes == 2) om_vb_pars <- adjust_vb_pars(om_vb_pars, vb_mult_Linf, vb_mult_k)
+
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## fishery effort data
@@ -232,7 +288,7 @@ om_sel_len <- om_sel_len %>% group_by(., id_fishery) %>%
 
 ## estimated length-class specific selectivities (for comparison with assessment report)
 om_sel_len %>% ggplot(.) +
-  geom_line(aes(x = len_class, y = sel_f)) +
+  geom_line(aes(x = len_class, y = sel_f), linewidth = 0.75) +
   facet_wrap(vars(id_fishery), ncol = 2)
 
 graphics.off()
