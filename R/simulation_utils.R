@@ -8,10 +8,13 @@ vb_growth <- function(x, L_inf, k, t_0) {
 }
 
 ## adjust VB pars for alternative growth class
-adjust_vb_pars <- function(data, mult_Linf, mult_k) {
-  data %>%
-    mutate(., id_growth = 2, L_inf = L_inf * mult_Linf, k = k * mult_k) %>%
-    bind_rows(data, .)
+adjust_vb_pars <- function(data, diff_Linf, diff_k) {
+    data_ii <- data %>% mutate(., id_growth = 2)
+
+    data <- data %>% mutate(., L_inf = L_inf * (1 - 0.5 * diff_Linf), k = k * (1 - 0.5 * diff_k))
+    data_ii <- data_ii %>% mutate(., L_inf = L_inf * (1 + 0.5 * diff_Linf), k = k * (1 + 0.5 * diff_k))
+
+    bind_rows(data, data_ii)
 }
 
 ## set probability of being in different growth classes
