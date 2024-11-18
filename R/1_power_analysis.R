@@ -164,25 +164,6 @@ om_sel_age <- om_sel_age %>% group_by(., id_fishery) %>%
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## length-at-age information
-
-## VB parameters from assessment
-om_len_at_age <- om_sd_len %>% mutate(., sp_code = sp_id) %>%
-  left_join(om_vb_pars, ., by = "sp_code") %>%
-  mutate(., mean_len = vb_growth(age_class, L_inf, k, t_0)) %>%
-  select(., age_class, mean_len, sd_len)
-
-
-##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## average weight by length class
-
-om_avg_weight <- data.frame(sp_code = sp_id, len_class = om_lf_range)
-om_avg_weight <- om_avg_weight %>% left_join(., om_lw_pars, by = "sp_code") %>%
-  mutate(., avg_kg = a * (len_class + 0.5) ^ b)
-om_avg_weight <- om_avg_weight %>% select(., - sp_code)
-
-
-##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## numbers at age
 
 om_pop_age <- om_pop_age %>% filter(., year >= om_year_min, year <= om_year_max)
@@ -197,6 +178,26 @@ om_pop_age <- om_pop_age %>%
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## average weight by length class
+
+om_avg_weight <- data.frame(sp_code = sp_id, len_class = om_lf_range)
+om_avg_weight <- om_avg_weight %>% left_join(., om_lw_pars, by = "sp_code") %>%
+  mutate(., avg_kg = a * (len_class + 0.5) ^ b)
+om_avg_weight <- om_avg_weight %>% select(., - sp_code)
+
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## length-at-age information
+
+## get mean len and CV by length class
+om_len_at_age <- om_sd_len %>% mutate(., sp_code = sp_id) %>%
+  left_join(om_vb_pars, ., by = "sp_code") %>%
+  mutate(., mean_len = vb_growth(age_class, L_inf, k, t_0)) %>%
+  mutate(., cv_len = sd_len / mean_len) %>%
+  select(., age_class, mean_len, sd_len, cv_len)
+
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## probability matrix mapping age-classes to length-classes
 
 ## use a slightly broader upper range of length classes when estimating probabilities
@@ -204,11 +205,11 @@ om_pop_age <- om_pop_age %>%
 om_lf_range_estimate <- min(om_lf_range):floor(max(om_lf_range * 1.2))
 
 ## estimate probabilities
-om_age_to_len <- om_len_at_age %>% select(., age_class, mean_len, sd_len) %>% 
+om_age_to_len <- om_len_at_age %>%
   expand_grid(., len_class = om_lf_range_estimate) %>%
-  mutate(., p_len_class = pnorm(len_class + 1, mean = mean_len, sd = sd_len) -
-           pnorm(len_class, mean = mean_len, sd = sd_len))
-om_age_to_len <- om_age_to_len %>% select(., - mean_len, - sd_len)
+  mutate(., p_len_class = pnorm(len_class + 1, mean = mean_len, sd = cv_len * mean_len) -
+           pnorm(len_class, mean = mean_len, sd = cv_len * mean_len))
+om_age_to_len <- om_age_to_len %>% select(., - mean_len, - sd_len, - cv_len)
 
 ## and make largest length class in assessment a plus group
 om_age_to_len <- om_age_to_len %>% mutate(., len_class = pmin(len_class, max(om_lf_range)))
