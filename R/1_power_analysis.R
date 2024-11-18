@@ -91,7 +91,7 @@ om_lk_ff <- readRDS(file = file.path(data_path, paste0(tolower(sp_id), "_lk_ff.r
 
 om_pop_age <- readRDS(file = file.path(data_path, paste0(tolower(sp_id), "_pop_n.rds")))
 om_sel_age <- readRDS(file = file.path(data_path, paste0(tolower(sp_id), "_sel.rds")))
-om_q <- readRDS(file = file.path(data_path, paste0(tolower(sp_id), "_q.rds")))
+mfcl_q_f <- readRDS(file = file.path(data_path, paste0(tolower(sp_id), "_q.rds")))
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -136,17 +136,17 @@ om_eff <- om_eff %>%
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## catchabilities
+## MFCL catchabilities
 
-om_q <- om_q %>% filter(., year >= om_year_min, year <= om_year_max, id_fishery %in% om_ff_ids)
+mfcl_q_f <- mfcl_q_f %>% filter(., year >= om_year_min, year <= om_year_max, id_fishery %in% om_ff_ids)
 
 ## check for NAs
-om_q %>% filter(., is.na(q_f))
-om_q <- om_q %>% filter(., !is.na(q_f))
+mfcl_q_f %>% filter(., is.na(q_f))
+mfcl_q_f <- mfcl_q_f %>% filter(., !is.na(q_f))
 ## remove records with NAs
 
 ## average across years
-om_q <- om_q %>%
+mfcl_q_f <- mfcl_q_f %>%
   group_by(., id_fishery, qtr) %>%
   summarise(., q_f = sum(q_f) / om_n_years) %>% data.frame(.)
 
@@ -259,7 +259,18 @@ om_age_to_len <- om_age_to_len %>% group_by(., id_growth, age_class) %>%
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## numbers by length-class
+## numbers by length-class with MFCL growth curve
+
+mfcl_pop_len <- om_pop_age %>% left_join(., mfcl_age_to_len, by = "age_class", relationship = "many-to-many")
+mfcl_pop_len <- mfcl_pop_len %>% mutate(., n = round(n * p_len_class))
+mfcl_pop_len <- mfcl_pop_len %>% select(., - p_len_class)
+mfcl_pop_len <- mfcl_pop_len %>% select(., area, qtr, age_class, len_class, n)
+
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## numbers by length-class with OM growth curve(s)
+
+warning("Need to bring in area specific probalities of different growth curves!!")
 
 om_pop_len <- om_pop_age %>% left_join(., om_age_to_len, by = "age_class", relationship = "many-to-many")
 om_pop_len <- om_pop_len %>% mutate(., n = round(n * p_len_class))
@@ -268,36 +279,37 @@ om_pop_len <- om_pop_len %>% select(., area, qtr, age_class, len_class, n)
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## estimate catchabilities required to obtain catches (using age-based selectivities)
+## estimate catchabilities required to obtain catches
+##  - with age-based selectivities, MFCL growth curves and MFCL population at length
 
 ## C = q * sel * effort * N
 ## so q = C / (sel * effort * N)
 
 ## combine necessary variables to estimate q
-estimate_q_f <- om_lk_ff %>% left_join(., om_pop_len, by = "area", relationship = "many-to-many")
-estimate_q_f <- estimate_q_f %>% left_join(., om_sel_age, by = c("id_fishery", "age_class"))
-estimate_q_f <- estimate_q_f %>% left_join(., om_eff, by = c("id_fishery", "qtr"))
-estimate_q_f <- estimate_q_f %>% left_join(., om_avg_weight, by = "len_class")
+om_q_f <- om_lk_ff %>% left_join(., mfcl_pop_len, by = "area", relationship = "many-to-many")
+om_q_f <- om_q_f %>% left_join(., om_sel_age, by = c("id_fishery", "age_class"))
+om_q_f <- om_q_f %>% left_join(., om_eff, by = c("id_fishery", "qtr"))
+om_q_f <- om_q_f %>% left_join(., om_avg_weight, by = "len_class")
 
-## calculate denominator of estimate_q_f by age-class & length-class
-estimate_q_f <- estimate_q_f %>% mutate(., q_f_denom = sel_f * effort * n * avg_kg / 1E3)
+## calculate denominator of om_q_f by age-class & length-class
+om_q_f <- om_q_f %>% mutate(., q_f_denom = sel_f * effort * n * avg_kg / 1E3)
 
 ## calculate total denominator by fishery and quarter
-estimate_q_f <- estimate_q_f %>%
+om_q_f <- om_q_f %>%
   group_by(., id_fishery, qtr) %>%
   summarise(., q_f_denom = sum(q_f_denom)) %>% data.frame(.)
 
 ## and estimate catchability
-estimate_q_f <- estimate_q_f %>% left_join(., om_eff, by = c("id_fishery", "qtr"))
-estimate_q_f <- estimate_q_f %>% mutate(., q_f = catch / q_f_denom)
-estimate_q_f <- estimate_q_f %>% select(., id_fishery, qtr, q_f)
+om_q_f <- om_q_f %>% left_join(., om_eff, by = c("id_fishery", "qtr"))
+om_q_f <- om_q_f %>% mutate(., q_f = catch / q_f_denom)
+om_q_f <- om_q_f %>% select(., id_fishery, qtr, q_f)
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## probability of capture with age based selectivity
 
 ## p_catch = q * sel * effort
-p_catch_age <- estimate_q_f %>% left_join(., om_sel_age, by = "id_fishery", relationship = "many-to-many")
+p_catch_age <- om_q_f %>% left_join(., om_sel_age, by = "id_fishery", relationship = "many-to-many")
 p_catch_age <- om_eff %>% select(., - catch) %>% left_join(p_catch_age, ., by = c("id_fishery", "qtr"), relationship = "many-to-one")
 p_catch_age <- p_catch_age %>% mutate(., p_catch = q_f * sel_f * effort)
 p_catch_age <- p_catch_age %>% select(., id_fishery, qtr, age_class, p_catch)
@@ -305,10 +317,10 @@ p_catch_age <- p_catch_age %>% select(., id_fishery, qtr, age_class, p_catch)
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## probability of capture with length based selectivity
-##  - derived from age based selectivity
+##  - derived from age based selectivity, MFCL growth curves and MFCL population at length
 
 om_sel_len <- om_sel_age %>% left_join(., om_lk_ff, by = "id_fishery")
-om_sel_len <- om_pop_len %>%
+om_sel_len <- mfcl_pop_len %>%
   group_by(., area, age_class, len_class) %>%
   summarise(n = sum(n)) %>% data.frame(.) %>%
   left_join(om_sel_len, ., by = c("area", "age_class"), relationship = "many-to-many")
