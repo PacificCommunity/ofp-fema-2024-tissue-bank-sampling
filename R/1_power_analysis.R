@@ -324,6 +324,11 @@ om_p_catch_age <- om_eff %>% select(., - catch) %>% left_join(om_p_catch_age, .,
 om_p_catch_age <- om_p_catch_age %>% mutate(., p_catch = q_f * sel_f * effort)
 om_p_catch_age <- om_p_catch_age %>% select(., id_fishery, qtr, age_class, p_catch)
 
+## and add area information for each fishery
+om_p_catch_age <- om_p_catch_age %>%
+  left_join(., om_lk_ff, by = "id_fishery", relationship = "many-to-one") %>%
+  select(., id_fishery, area, qtr, everything())
+
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## length-based selectivity
@@ -362,13 +367,10 @@ om_p_catch_len <- om_eff %>% select(., - catch) %>% left_join(om_p_catch_len, .,
 om_p_catch_len <- om_p_catch_len %>% mutate(., p_catch = q_f * sel_f * effort)
 om_p_catch_len <- om_p_catch_len %>% select(., id_fishery, qtr, len_class, p_catch)
 
-
-################################################################################
-## 
-################################################################################
-
-
-
+## and add area information for each fishery
+om_p_catch_len <- om_p_catch_len %>%
+  left_join(., om_lk_ff, by = "id_fishery", relationship = "many-to-one") %>%
+  select(., id_fishery, area, qtr, everything())
 
 
 ################################################################################
