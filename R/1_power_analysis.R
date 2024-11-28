@@ -270,12 +270,22 @@ mfcl_pop_len <- mfcl_pop_len %>% select(., area, qtr, age_class, len_class, n)
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## numbers by length-class with OM growth curve(s)
 
-warning("Need to bring in area specific probalities of different growth curves!!")
+## apply probability of being in each growth class (deterministically)
+om_pop_len <- om_pop_age %>% left_join(., lk_growth_probs, by = "area", relationship = "many-to-many")
+om_pop_len <- om_pop_len %>% mutate(., n = vb_prop * n) %>% select(., - vb_prop)
 
-om_pop_len <- om_pop_age %>% left_join(., om_age_to_len, by = "age_class", relationship = "many-to-many")
-om_pop_len <- om_pop_len %>% mutate(., n = round(n * p_len_class))
+## now apply probability of being in each length class
+om_pop_len <- om_pop_len %>% left_join(., om_age_to_len, by = c("id_growth", "age_class"), relationship = "many-to-many")
+om_pop_len <- om_pop_len %>% mutate(., n = n * p_len_class)
 om_pop_len <- om_pop_len %>% select(., - p_len_class)
-om_pop_len <- om_pop_len %>% select(., area, qtr, age_class, len_class, n)
+om_pop_len <- om_pop_len %>% select(., area, qtr, id_growth, age_class, len_class, n)
+
+## check that numbers are preserved
+om_pop_age %>% summarise(., n = sum(n))
+om_pop_len %>% summarise(., n = sum(n))
+
+## and round numbers at length to nearest integer
+om_pop_len <- om_pop_len %>% mutate(., n = round(n))
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -337,7 +347,8 @@ om_sel_len <- om_sel_len %>% group_by(., id_fishery) %>%
 ## estimated length-class specific selectivities (for comparison with assessment report)
 om_sel_len %>% ggplot(.) +
   geom_line(aes(x = len_class, y = sel_f), linewidth = 0.75) +
-  facet_wrap(vars(id_fishery), ncol = 2)
+  facet_wrap(vars(id_fishery), ncol = 2) +
+  xlab("Length class (cm)") + ylab("Selectivity")
 
 graphics.off()
 
