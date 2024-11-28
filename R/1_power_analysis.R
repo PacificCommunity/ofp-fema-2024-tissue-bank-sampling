@@ -182,7 +182,7 @@ om_pop_age <- om_pop_age %>%
 om_avg_weight <- data.frame(sp_code = sp_id, len_class = om_lf_range)
 om_avg_weight <- om_avg_weight %>% left_join(., om_lw_pars, by = "sp_code") %>%
   mutate(., avg_kg = a * (len_class + 0.5) ^ b)
-om_avg_weight <- om_avg_weight %>% select(., - sp_code)
+om_avg_weight <- om_avg_weight %>% select(., len_class, avg_kg)
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -385,9 +385,8 @@ catch_age <- draw_catch_age(om_p_catch_age, om_pop_len)
 catch_age %>% group_by(., age_class) %>% summarise(., catch = sum(catch))
 
 ## back-calculate catch weights
-catch_age %>% mutate(., sp_code = "SKJ") %>%
-  left_join(., om_lw_pars, by = "sp_code") %>%
-  mutate(., mt = catch * a * (len_class + 0.5) ^ b / 1E3) %>%
+catch_age %>% left_join(., om_avg_weight, by = "len_class") %>%
+  mutate(., mt = catch * avg_kg * 1E-3) %>%
   group_by(., id_fishery) %>% summarise(., mt = sum(mt))
 
 om_eff %>% group_by(., id_fishery) %>% summarise(., catch = sum(catch))
@@ -400,9 +399,8 @@ catch_len <- draw_catch_len(om_p_catch_len, om_pop_len)
 catch_len %>% group_by(., age_class) %>% summarise(., catch = sum(catch))
 
 ## back-calculate catch weights
-catch_len %>% mutate(., sp_code = "SKJ") %>%
-  left_join(., om_lw_pars, by = "sp_code") %>%
-  mutate(., mt = catch * a * (len_class + 0.5) ^ b / 1E3) %>%
+catch_len %>% left_join(., om_avg_weight, by = "len_class") %>%
+  mutate(., mt = catch * avg_kg * 1E-3) %>%
   group_by(., id_fishery) %>% summarise(., mt = sum(mt))
 
 om_eff %>% group_by(., id_fishery) %>% summarise(., catch = sum(catch))
