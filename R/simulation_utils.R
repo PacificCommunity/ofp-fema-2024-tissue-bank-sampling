@@ -32,3 +32,29 @@ set_growth_class_probs <- function(data, a_int, b_slope) {
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## functions for use in 'estimation model' component
 ##  - i.e., drawing of catches, and sampling from catches
+
+## draw catch at random from population with age-based selectivity
+draw_catch_age <- function(p_catch, pop_len) {
+  catch <- pop_len %>% inner_join(., p_catch, by = c("area", "qtr", "age_class"), relationship = "many-to-many")
+
+  ## use p_catch as binomial sampling probability
+  catch <- catch %>%
+    rowwise(.) %>% mutate(., catch = rbinom(n = 1, size = n, prob = p_catch)) %>%
+    ungroup(.)
+
+  catch %>% select(., - n, - p_catch) %>%
+    select(., id_fishery, area, qtr, everything())
+}
+
+## draw catch at random from population with length-based selectivity
+draw_catch_len <- function(p_catch, pop_len) {
+  catch <- pop_len %>% inner_join(., p_catch, by = c("area", "qtr", "len_class"), relationship = "many-to-many")
+
+  ## use p_catch as binomial sampling probability
+  catch <- catch %>%
+    rowwise(.) %>% mutate(., catch = rbinom(n = 1, size = n, prob = p_catch)) %>%
+    ungroup(.)
+
+  catch %>% select(., - n, - p_catch) %>%
+    select(., area, qtr, id_fishery, everything())
+}
