@@ -296,30 +296,30 @@ om_pop_len <- om_pop_len %>% mutate(., n = round(n))
 ## so q = C / (sel * effort * N)
 
 ## combine necessary variables to estimate q
-om_q_f <- om_lk_ff %>% left_join(., mfcl_pop_len, by = "area", relationship = "many-to-many")
-om_q_f <- om_q_f %>% left_join(., om_sel_age, by = c("id_fishery", "age_class"))
-om_q_f <- om_q_f %>% left_join(., om_eff, by = c("id_fishery", "qtr"))
-om_q_f <- om_q_f %>% left_join(., om_avg_weight, by = "len_class")
+om_q_f_age <- om_lk_ff %>% left_join(., mfcl_pop_len, by = "area", relationship = "many-to-many")
+om_q_f_age <- om_q_f_age %>% left_join(., om_sel_age, by = c("id_fishery", "age_class"))
+om_q_f_age <- om_q_f_age %>% left_join(., om_eff, by = c("id_fishery", "qtr"))
+om_q_f_age <- om_q_f_age %>% left_join(., om_avg_weight, by = "len_class")
 
-## calculate denominator of om_q_f by age-class & length-class
-om_q_f <- om_q_f %>% mutate(., q_f_denom = sel_f * effort * n * avg_kg / 1E3)
+## calculate denominator of om_q_f_age by age-class & length-class
+om_q_f_age <- om_q_f_age %>% mutate(., q_f_denom = sel_f * effort * n * avg_kg / 1E3)
 
 ## calculate total denominator by fishery and quarter
-om_q_f <- om_q_f %>%
+om_q_f_age <- om_q_f_age %>%
   group_by(., id_fishery, qtr) %>%
   summarise(., q_f_denom = sum(q_f_denom)) %>% data.frame(.)
 
 ## and estimate catchability
-om_q_f <- om_q_f %>% left_join(., om_eff, by = c("id_fishery", "qtr"))
-om_q_f <- om_q_f %>% mutate(., q_f = catch / q_f_denom)
-om_q_f <- om_q_f %>% select(., id_fishery, qtr, q_f)
+om_q_f_age <- om_q_f_age %>% left_join(., om_eff, by = c("id_fishery", "qtr"))
+om_q_f_age <- om_q_f_age %>% mutate(., q_f = catch / q_f_denom)
+om_q_f_age <- om_q_f_age %>% select(., id_fishery, qtr, q_f)
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## probability of capture with age based selectivity
 
 ## p_catch = q * sel * effort
-om_p_catch_age <- om_q_f %>% left_join(., om_sel_age, by = "id_fishery", relationship = "many-to-many")
+om_p_catch_age <- om_q_f_age %>% left_join(., om_sel_age, by = "id_fishery", relationship = "many-to-many")
 om_p_catch_age <- om_eff %>% select(., - catch) %>% left_join(om_p_catch_age, ., by = c("id_fishery", "qtr"), relationship = "many-to-one")
 om_p_catch_age <- om_p_catch_age %>% mutate(., p_catch = q_f * sel_f * effort)
 om_p_catch_age <- om_p_catch_age %>% select(., id_fishery, qtr, age_class, p_catch)
@@ -346,7 +346,8 @@ om_sel_len <- om_sel_len %>%
   summarise(., sel_f = sum(sel_f * n) / sum(n)) %>% data.frame(.)
 
 ## rescale to sum to one
-om_sel_len <- om_sel_len %>% group_by(., id_fishery) %>%
+om_sel_len <- om_sel_len %>%
+  group_by(., id_fishery) %>%
   mutate(., sel_f = sel_f / sum(sel_f)) %>% data.frame(.)
 
 ## estimated length-class specific selectivities (for comparison with assessment report)
@@ -362,7 +363,7 @@ graphics.off()
 ## probability of capture with length based selectivity
 
 ## p_catch = q * sel * effort
-om_p_catch_len <- om_q_f %>% left_join(., om_sel_len, by = "id_fishery", relationship = "many-to-many")
+om_p_catch_len <- om_q_f_age %>% left_join(., om_sel_len, by = "id_fishery", relationship = "many-to-many")
 om_p_catch_len <- om_eff %>% select(., - catch) %>% left_join(om_p_catch_len, ., by = c("id_fishery", "qtr"), relationship = "many-to-one")
 om_p_catch_len <- om_p_catch_len %>% mutate(., p_catch = q_f * sel_f * effort)
 om_p_catch_len <- om_p_catch_len %>% select(., id_fishery, qtr, len_class, p_catch)
