@@ -360,10 +360,37 @@ graphics.off()
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## estimate catchabilities required to obtain catches
+##  - with length-based selectivities, MFCL growth curves and MFCL population at length
+
+## C = q * sel * effort * N
+## so q = C / (sel * effort * N)
+
+## combine necessary variables to estimate q
+om_q_f_len <- om_lk_ff %>% left_join(., mfcl_pop_len, by = "area", relationship = "many-to-many")
+om_q_f_len <- om_q_f_len %>% left_join(., om_sel_len, by = c("id_fishery", "len_class"))
+om_q_f_len <- om_q_f_len %>% left_join(., om_eff, by = c("id_fishery", "qtr"))
+om_q_f_len <- om_q_f_len %>% left_join(., om_avg_weight, by = "len_class")
+
+## calculate denominator of om_q_f_len by age-class & length-class
+om_q_f_len <- om_q_f_len %>% mutate(., q_f_denom = sel_f * effort * n * avg_kg / 1E3)
+
+## calculate total denominator by fishery and quarter
+om_q_f_len <- om_q_f_len %>%
+  group_by(., id_fishery, qtr) %>%
+  summarise(., q_f_denom = sum(q_f_denom)) %>% data.frame(.)
+
+## and estimate catchability
+om_q_f_len <- om_q_f_len %>% left_join(., om_eff, by = c("id_fishery", "qtr"))
+om_q_f_len <- om_q_f_len %>% mutate(., q_f = catch / q_f_denom)
+om_q_f_len <- om_q_f_len %>% select(., id_fishery, qtr, q_f)
+
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## probability of capture with length based selectivity
 
 ## p_catch = q * sel * effort
-om_p_catch_len <- om_q_f_age %>% left_join(., om_sel_len, by = "id_fishery", relationship = "many-to-many")
+om_p_catch_len <- om_q_f_len %>% left_join(., om_sel_len, by = "id_fishery", relationship = "many-to-many")
 om_p_catch_len <- om_eff %>% select(., - catch) %>% left_join(om_p_catch_len, ., by = c("id_fishery", "qtr"), relationship = "many-to-one")
 om_p_catch_len <- om_p_catch_len %>% mutate(., p_catch = q_f * sel_f * effort)
 om_p_catch_len <- om_p_catch_len %>% select(., id_fishery, qtr, len_class, p_catch)
