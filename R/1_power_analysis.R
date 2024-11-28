@@ -374,5 +374,39 @@ om_p_catch_len <- om_p_catch_len %>%
 
 
 ################################################################################
+## testbed for functions
+################################################################################
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## test functions drawing catch at age
+
+catch_age <- draw_catch_age(om_p_catch_age, om_pop_len)
+catch_age %>% group_by(., age_class) %>% summarise(., catch = sum(catch))
+
+## back-calculate catch weights
+catch_age %>% mutate(., sp_code = "SKJ") %>%
+  left_join(., om_lw_pars, by = "sp_code") %>%
+  mutate(., mt = catch * a * (len_class + 0.5) ^ b / 1E3) %>%
+  group_by(., id_fishery) %>% summarise(., mt = sum(mt))
+
+om_eff %>% group_by(., id_fishery) %>% summarise(., catch = sum(catch))
+
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## test functions drawing catch at len
+
+catch_len <- draw_catch_len(om_p_catch_len, om_pop_len)
+catch_len %>% group_by(., age_class) %>% summarise(., catch = sum(catch))
+
+## back-calculate catch weights
+catch_len %>% mutate(., sp_code = "SKJ") %>%
+  left_join(., om_lw_pars, by = "sp_code") %>%
+  mutate(., mt = catch * a * (len_class + 0.5) ^ b / 1E3) %>%
+  group_by(., id_fishery) %>% summarise(., mt = sum(mt))
+
+om_eff %>% group_by(., id_fishery) %>% summarise(., catch = sum(catch))
+
+
+################################################################################
 ## END OF SCRIPT
 ################################################################################
