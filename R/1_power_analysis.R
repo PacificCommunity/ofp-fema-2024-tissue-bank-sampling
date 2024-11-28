@@ -152,7 +152,7 @@ mfcl_q_f <- mfcl_q_f %>%
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## (age-based) selectivities
+## age-based selectivities
 
 om_sel_age <- om_sel_age %>% filter(., id_fishery %in% om_ff_ids)
 
@@ -319,15 +319,15 @@ om_q_f <- om_q_f %>% select(., id_fishery, qtr, q_f)
 ## probability of capture with age based selectivity
 
 ## p_catch = q * sel * effort
-p_catch_age <- om_q_f %>% left_join(., om_sel_age, by = "id_fishery", relationship = "many-to-many")
-p_catch_age <- om_eff %>% select(., - catch) %>% left_join(p_catch_age, ., by = c("id_fishery", "qtr"), relationship = "many-to-one")
-p_catch_age <- p_catch_age %>% mutate(., p_catch = q_f * sel_f * effort)
-p_catch_age <- p_catch_age %>% select(., id_fishery, qtr, age_class, p_catch)
+om_p_catch_age <- om_q_f %>% left_join(., om_sel_age, by = "id_fishery", relationship = "many-to-many")
+om_p_catch_age <- om_eff %>% select(., - catch) %>% left_join(om_p_catch_age, ., by = c("id_fishery", "qtr"), relationship = "many-to-one")
+om_p_catch_age <- om_p_catch_age %>% mutate(., p_catch = q_f * sel_f * effort)
+om_p_catch_age <- om_p_catch_age %>% select(., id_fishery, qtr, age_class, p_catch)
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## probability of capture with length based selectivity
-##  - derived from age based selectivity, MFCL growth curves and MFCL population at length
+## length-based selectivity
+##  - approximated from age based selectivity, MFCL growth curves and MFCL population at length
 
 om_sel_len <- om_sel_age %>% left_join(., om_lk_ff, by = "id_fishery")
 om_sel_len <- mfcl_pop_len %>%
@@ -351,6 +351,16 @@ om_sel_len %>% ggplot(.) +
   xlab("Length class (cm)") + ylab("Selectivity")
 
 graphics.off()
+
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## probability of capture with length based selectivity
+
+## p_catch = q * sel * effort
+om_p_catch_len <- om_q_f %>% left_join(., om_sel_len, by = "id_fishery", relationship = "many-to-many")
+om_p_catch_len <- om_eff %>% select(., - catch) %>% left_join(om_p_catch_len, ., by = c("id_fishery", "qtr"), relationship = "many-to-one")
+om_p_catch_len <- om_p_catch_len %>% mutate(., p_catch = q_f * sel_f * effort)
+om_p_catch_len <- om_p_catch_len %>% select(., id_fishery, qtr, len_class, p_catch)
 
 
 ################################################################################
