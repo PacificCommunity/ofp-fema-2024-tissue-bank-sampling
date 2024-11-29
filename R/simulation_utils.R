@@ -70,6 +70,12 @@ draw_catch_len <- function(p_catch, pop_len) {
     select(., area, qtr, id_fishery, everything())
 }
 
+## prepare catch data to apply sampling strategy
+prep_catch_for_sampling <- function(x, strata_vvs) {
+  x %>% group_by(., pick({{ strata_vvs }})) %>%
+    summarise(., catch = sum(catch)) %>% data.frame(.)
+}
+
 ## draw samples from catch using fixed-otolith-sampling
 ##  - with n_per_bin samples per length class
 draw_samples_fos <- function(x, n_per_bin) {
@@ -82,17 +88,27 @@ draw_samples_fos <- function(x, n_per_bin) {
 
   ## for each em_len_class, draw age samples at random
   ages <- lapply(len_classes, function(y) {
-    message(y)
+    ## filter for length class
     x <- x %>% filter(., em_len_class %in% y)
 
     ## sample at random from ages (without replacement)
     ##  - adjust target sample size for instances where < total catch
-    ##  - and add small number to weights to avoid errors where limited number of non-zero probs
+    ##  - add small amount to probs = 0 to avoid errors (if limited number of non-zero probs)
+
     total_catch <- sum(x$catch)
-    draws <- sample(x$age_class, size = min(n_per_bin, total_catch), prob = pmax(1E-6, x$catch))
+    draws <- sample(x$age_class, size = min(n_per_bin, total_catch), prob = pmin(1E-9, x$catch), replace = TRUE)
 
     expand_grid(em_len_class = y, age_class = draws)
   })
 
   bind_rows(ages)
+}
+
+## convert a target sample size (double) in to an integer stochastically
+##  - to preserve target sample size across draws
+target_samples_to_integer <- function(x) {
+  prop_one <- x - floor(x)
+  prop_zero <- 1 - prop_one
+
+  floor(x) + sample(0:1, size = 1, prob = c(prop_zero, prop_one))
 }
