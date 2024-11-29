@@ -69,3 +69,30 @@ draw_catch_len <- function(p_catch, pop_len) {
   catch %>% select(., - n, - p_catch) %>%
     select(., area, qtr, id_fishery, everything())
 }
+
+## draw samples from catch using fixed-otolith-sampling
+##  - with n_per_bin samples per length class
+draw_samples_fos <- function(x, n_per_bin) {
+  ## get length classes with some catch
+  len_classes <- x %>% prep_catch_for_sampling(., c(em_len_class)) %>%
+    filter(., catch > 0) %>% with(., em_len_class)
+
+  ## aggregate to sampling resolution
+  x <- x %>% prep_catch_for_sampling(., c(age_class, em_len_class))
+
+  ## for each em_len_class, draw age samples at random
+  ages <- lapply(len_classes, function(y) {
+    message(y)
+    x <- x %>% filter(., em_len_class %in% y)
+
+    ## sample at random from ages (without replacement)
+    ##  - adjust target sample size for instances where < total catch
+    ##  - and add small number to weights to avoid errors where limited number of non-zero probs
+    total_catch <- sum(x$catch)
+    draws <- sample(x$age_class, size = min(n_per_bin, total_catch), prob = pmax(1E-6, x$catch))
+
+    expand_grid(em_len_class = y, age_class = draws)
+  })
+
+  bind_rows(ages)
+}
