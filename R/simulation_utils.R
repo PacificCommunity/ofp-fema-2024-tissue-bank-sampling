@@ -33,6 +33,17 @@ set_growth_class_probs <- function(data, a_int, b_slope) {
 ## functions for use in 'estimation model' component
 ##  - i.e., drawing of catches, and sampling from catches
 
+## get length interval for estimation model
+##   - based on rule of thumb from Coggins et al. 2013 (doi: 10.1080/00028487.2013.768550)
+get_em_len_interval <- function(L_inf) {
+  x <- L_inf / 30
+
+  ## select a practical length class interval
+  if(x < 3) return(2)
+  if(x < 7) return(5)
+  5 * round(x / 5)
+}
+
 ## draw catch at random from population with age-based selectivity
 draw_catch_age <- function(p_catch, pop_len) {
   catch <- pop_len %>% inner_join(., p_catch, by = c("area", "qtr", "age_class"), relationship = "many-to-many")
