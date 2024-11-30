@@ -91,7 +91,7 @@ draw_samples_fos <- function(x, n_per_bin) {
     ## filter for length class
     x <- x %>% filter(., em_len_class %in% y)
 
-    ## sample at random from ages (without replacement)
+    ## sample at random from ages
     ##  - adjust target sample size for instances where < total catch
     ##  - add small amount to probs = 0 to avoid errors (if limited number of non-zero probs)
 
@@ -111,4 +111,44 @@ target_samples_to_integer <- function(x) {
   prop_zero <- 1 - prop_one
 
   floor(x) + sample(0:1, size = 1, prob = c(prop_zero, prop_one))
+}
+
+## apply proportional-otolith-sampling
+##  - with total sample size consistent with FOS sampling and n_per_bin samples per length class
+draw_samples_pos <- function(x, n_per_bin) {
+  ## get total number of length classes
+  n_bins <- x %>% select(., em_len_class) %>% distinct(.) %>% nrow(.)
+  total_samples <- n_bins * n_per_bin
+
+  ## get proportions of catch per length class
+  prop_len_classes <- x %>% prep_catch_for_sampling(., c(em_len_class)) %>%
+    mutate(., prop = catch / sum(catch)) %>%
+    filter(., catch > 0)
+
+  ## allocate samples proportionally
+  prop_len_classes <- prop_len_classes %>% mutate(., target_samples = prop * total_samples)
+
+  ## aggregate catch to sampling resolution
+  x <- x %>% prep_catch_for_sampling(., c(age_class, em_len_class))
+
+  ## for each em_len_class, draw age samples at random
+  ages <- lapply(1:nrow(prop_len_classes), function(i) {
+    ## filter for length class
+    len_class <- prop_len_classes$em_len_class[i]
+    x <- x %>% filter(., em_len_class %in% len_class)
+
+    ## get target sample size, and convert to integer
+    target_n <- prop_len_classes$target_samples[i]
+    target_n <- target_samples_to_integer(target_n)
+
+    ## sample at random from ages
+    ##  - adjust target sample size for instances where < total catch
+    ##  - and add small number to weights to avoid errors where limited number of non-zero probs
+    total_catch <- sum(x$catch)
+    draws <- sample(x$age_class, size = min(target_n, total_catch), prob = pmax(1E-9, x$catch), replace = TRUE)
+
+    expand_grid(em_len_class = len_class, age_class = draws)
+  })
+
+  bind_rows(ages)
 }
