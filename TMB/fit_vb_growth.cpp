@@ -8,10 +8,10 @@ Type objective_function<Type>::operator() ()
   PARAMETER(log_L_inf);
   PARAMETER(log_k);
   PARAMETER(t_0);
-  PARAMETER(log_sigma);
-  ADREPORT(exp(2*log_sigma));
-  
+  PARAMETER(sigma_a);
+  PARAMETER(sigma_b);
+
   // assume normally distributed errors
-  Type nll = -sum(dnorm(Y, exp(log_L_inf) * (1.0 - exp(- exp(log_k) * (x - t_0))), exp(log_sigma), true));
+  Type nll = -sum(dnorm(Y, exp(log_L_inf) * (1.0 - exp(- exp(log_k) * (x - t_0))), exp(sigma_a + sigma_b * log(x)), true));
   return nll;
 }
