@@ -153,13 +153,18 @@ mfcl_q_f <- mfcl_q_f %>%
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## age-based selectivities
+##  - scaled to have a maximum of 1
 
+## filter for fisheries of interest (i.e., those we're sampling from)
 om_sel_age <- om_sel_age %>% filter(., id_fishery %in% om_ff_ids)
 
-## rescale selectivities
-om_sel_age <- om_sel_age %>% rename(., sel_f_raw = sel_f)
-om_sel_age <- om_sel_age %>% group_by(., id_fishery) %>%
-  mutate(., sel_f = sel_f_raw / sum(sel_f_raw)) %>% data.frame(.)
+## age-class specific selectivities (for comparison with assessment report)
+om_sel_age %>% ggplot(.) +
+  geom_line(aes(x = age_class, y = sel_f), linewidth = 0.75) +
+  facet_wrap(vars(id_fishery), ncol = 2) +
+  xlab("Age (quarters)") + ylab("Selectivity")
+
+graphics.off()
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -345,10 +350,10 @@ om_sel_len <- om_sel_len %>%
   group_by(., id_fishery, len_class) %>%
   summarise(., sel_f = sum(sel_f * n) / sum(n)) %>% data.frame(.)
 
-## rescale to sum to one
+## rescale to have a max of one
 om_sel_len <- om_sel_len %>%
   group_by(., id_fishery) %>%
-  mutate(., sel_f = sel_f / sum(sel_f)) %>% data.frame(.)
+  mutate(., sel_f = sel_f / max(sel_f)) %>% data.frame(.)
 
 ## estimated length-class specific selectivities (for comparison with assessment report)
 om_sel_len %>% ggplot(.) +
@@ -406,7 +411,7 @@ om_p_catch_len <- om_p_catch_len %>%
 ################################################################################
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## test functions drawing catch at age
+## test functions drawing catch with selectivity and age 
 
 catch_age <- draw_catch_age(om_p_catch_age, om_pop_len)
 catch_age %>% group_by(., age_class) %>% summarise(., catch = sum(catch))
@@ -420,7 +425,7 @@ om_eff %>% group_by(., id_fishery) %>% summarise(., catch = sum(catch))
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## test functions drawing catch at len
+## test functions drawing catch with selectivity at length
 
 catch_len <- draw_catch_len(om_p_catch_len, om_pop_len)
 catch_len %>% group_by(., age_class) %>% summarise(., catch = sum(catch))
@@ -431,6 +436,20 @@ catch_len %>% left_join(., om_avg_weight, by = "len_class") %>%
   group_by(., id_fishery) %>% summarise(., mt = sum(mt))
 
 om_eff %>% group_by(., id_fishery) %>% summarise(., catch = sum(catch))
+
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## test functions drawing samples from catch
+
+em_len_interval <- get_em_len_interval(mfcl_vb_pars$L_inf)
+
+catch_age <- catch_age %>% mutate(., em_len_class = em_len_interval * floor(len_class / em_len_interval))
+catch_len <- catch_len %>% mutate(., em_len_class = em_len_interval * floor(len_class / em_len_interval))
+
+x <- draw_samples_fos(catch_age, n_per_bin = 10)
+y <- draw_samples_pos(catch_age, n_per_bin = 10)
+
+
 
 
 ################################################################################
