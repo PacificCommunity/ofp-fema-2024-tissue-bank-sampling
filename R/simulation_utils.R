@@ -80,25 +80,26 @@ prep_catch_for_sampling <- function(x, strata_vvs) {
 ##  - with n_per_bin samples per length class
 draw_samples_fos <- function(x, n_per_bin) {
   ## get length classes with some catch
-  len_classes <- x %>% prep_catch_for_sampling(., c(em_len_class)) %>%
-    filter(., catch > 0) %>% with(., em_len_class)
+  prop_len_classes <- x %>% prep_catch_for_sampling(., c(em_len_class)) %>%
+    mutate(., prop = catch / sum(catch)) %>%
+    filter(., catch > 0)
 
   ## aggregate to sampling resolution
   x <- x %>% prep_catch_for_sampling(., c(age_class, em_len_class))
-
+  
   ## for each em_len_class, draw age samples at random
-  ages <- lapply(len_classes, function(y) {
+  ages <- lapply(1:nrow(prop_len_classes), function(i) {
     ## filter for length class
-    x <- x %>% filter(., em_len_class %in% y)
+    len_class <- prop_len_classes$em_len_class[i]
+    x <- x %>% filter(., em_len_class %in% len_class)
 
     ## sample at random from ages
     ##  - adjust target sample size for instances where < total catch
     ##  - add small amount to probs = 0 to avoid errors (if limited number of non-zero probs)
-
     total_catch <- sum(x$catch)
-    draws <- sample(x$age_class, size = min(n_per_bin, total_catch), prob = pmin(1E-9, x$catch), replace = TRUE)
+    draws <- sample(x$age_class, size = min(n_per_bin, total_catch), prob = pmax(1E-9, x$catch), replace = TRUE)
 
-    expand_grid(em_len_class = y, age_class = draws)
+    expand_grid(em_len_class = len_class, age_class = draws)
   })
 
   bind_rows(ages)
