@@ -19,3 +19,7 @@
 # ignore temporary .emacs backups
 .\#*
 \#*\#
+
+# ignore files related to compiled TMB model
+*.dll
+*.o
