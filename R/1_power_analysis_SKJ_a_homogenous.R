@@ -1,5 +1,6 @@
 ################################################################################
-## Run simulations for power analysis
+## Run simulations for power analysis for skipjack
+##  - with no spatial variation in growth
 ################################################################################
 
 ## Set timezone to UTC, to prevent automatic conversion from UTC to local time
@@ -497,89 +498,6 @@ proc.time() - st.time
 
 ## save simulated VB parameters
 writeRDS(draws_len, file = file.path(outputs_path, "simulated_VB_pars.RDS"))
-
-
-################################################################################
-## testbed for functions
-################################################################################
-
-##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## test functions drawing catch with selectivity and age 
-
-catch_age <- draw_catch_age(om_p_catch_age, om_pop_len)
-catch_age %>% group_by(., age_class) %>% summarise(., catch = sum(catch))
-
-## back-calculate catch weights
-catch_age %>% left_join(., om_avg_weight, by = "len_class") %>%
-  mutate(., mt = catch * avg_kg * 1E-3) %>%
-  group_by(., id_fishery) %>% summarise(., mt = sum(mt))
-
-om_eff %>% group_by(., id_fishery) %>% summarise(., catch = sum(catch))
-
-
-##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## test functions drawing catch with selectivity at length
-
-catch_len <- draw_catch_len(om_p_catch_len, om_pop_len)
-catch_len %>% group_by(., age_class) %>% summarise(., catch = sum(catch))
-
-## back-calculate catch weights
-catch_len %>% left_join(., om_avg_weight, by = "len_class") %>%
-  mutate(., mt = catch * avg_kg * 1E-3) %>%
-  group_by(., id_fishery) %>% summarise(., mt = sum(mt))
-
-om_eff %>% group_by(., id_fishery) %>% summarise(., catch = sum(catch))
-
-
-##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## test functions drawing samples from catch
-
-em_len_interval <- get_em_len_interval(mfcl_vb_pars$L_inf)
-
-catch_age <- catch_age %>% mutate(., em_len_class = em_len_interval * floor(len_class / em_len_interval))
-catch_len <- catch_len %>% mutate(., em_len_class = em_len_interval * floor(len_class / em_len_interval))
-
-samples_fos <- draw_samples_fos(catch_age, n_per_bin = 5)
-samples_pos <- draw_samples_pos(catch_age, n_per_bin = 5)
-
-samples_fos %>% ggplot() + geom_point(aes(x = age_class, y = em_len_class))
-samples_pos %>% ggplot() + geom_point(aes(x = age_class, y = em_len_class))
-
-
-##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## fit models to samples
-
-dyn.load(dynlib("../TMB/fit_vb_growth"))
-
-## fitted to fixed otolith sampling
-mod_data <- list(Y = samples_fos$em_len_class + 0.5 * em_len_interval, x = samples_fos$age_class)
-pars <- parameters <- list(log_L_inf = log(100), log_k = log(0.2), t_0 = 0, sigma_a = 0, sigma_b = 0)
-
-obj <- MakeADFun(mod_data, pars, DLL="fit_vb_growth")
-opt <- optim(obj$par, obj$fn, obj$gr)
-
-
-## fitted to proportional otolith sampling
-mod_data <- list(Y = samples_pos$em_len_class + 0.5 * em_len_interval, x = samples_pos$age_class)
-pars <- parameters <- list(log_L_inf = log(100), log_k = log(0.2), t_0 = 0, sigma_a = 0, sigma_b = 0)
-
-obj <- MakeADFun(mod_data, pars, DLL="fit_vb_growth")
-opt <- optim(obj$par, obj$fn, obj$gr)
-
-dyn.unload(dynlib("../TMB/fit_vb_growth"))
-
-
-##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## function to implement power analysis
-
-
-fitted_mod_summary <- function(x) {
-  out <- x$par %>% data.frame(.)
-  pars <- rownames(out)
-  rownames(out) <- NULL
-  colnames(out) <- "value"
-  out %>% mutate(., par = pars) %>% select(., par, everything())
-} 
 
 
 ################################################################################
