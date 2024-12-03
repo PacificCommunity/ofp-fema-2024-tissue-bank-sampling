@@ -46,36 +46,6 @@ om_n_years <- length(om_year_min:om_year_max)
 vb_classes <- 1L
 
 
-##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## multiple growth curve scenario
-
-if(FALSE) {
-vb_classes <- 2L
-vb_diff_k <- 0.2
-vb_diff_Linf <- -0.2
-
-## intercept (a) and slope (b) in function that defines membership probabilities per MFCL area
-id_growth_a <- 0.75
-id_growth_b <- -0.25
-}
-## function to specify probability of belonging to first VB class
-##  - linear function of area (x) of the form a + b * (standardised) x
-assign_id_growth_prob <- function(x, a, b) {
-  # for western and central temperate regions, assign proxy region IDs
-  x[x %in% c(1, 3)] <- 5
-  x[x %in% c(2, 4)] <- 7.5
-
-  if(max(a + abs(b)) > 1) stop("reduce strength of gradient! prob > 1")
-  if(min(a - abs(b)) < 0) stop("reduce strength of gradient! prob < 0")
-
-  ## rescale area ID to go from 0 to 1
-  x_range <- range(x, na.rm = TRUE)
-  x <- (x - x_range[1]) / (x_range[2] - x_range[1])
-
-  a + b * x
-}
-
-
 ################################################################################
 ## Create inputs to operating model
 ################################################################################
