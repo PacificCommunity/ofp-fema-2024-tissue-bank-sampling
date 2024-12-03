@@ -195,10 +195,12 @@ simulate_homogenous_sel_age <- function(sampling_rate, id_draw) {
   dyn.unload(dynlib("../TMB/fit_vb_growth"))
 
   ## add meta-data to fitted model objects
+  opt_fos[["sampling_scheme"]] <- "FOS"
   opt_fos[["sampling_rate"]] <- sampling_rate
   opt_fos[["samples"]] <- nrow(samples_fos)
   opt_fos[["id_draw"]] <- id_draw
 
+  opt_pos[["sampling_scheme"]] <- "POS"
   opt_pos[["sampling_rate"]] <- sampling_rate
   opt_pos[["samples"]] <- nrow(samples_pos)
   opt_pos[["id_draw"]] <- id_draw
