@@ -8,6 +8,8 @@ Sys.setenv(TZ="UTC")
 library(ggplot2)
 library(dplyr)
 library(tidyr)
+library(TMB)
+library(snowfall)
 
 source('general_utils.R')
 source('simulation_utils.R')
@@ -46,6 +48,7 @@ vb_classes <- 1L
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## multiple growth curve scenario
 
+if(FALSE) {
 vb_classes <- 2L
 vb_diff_k <- 0.2
 vb_diff_Linf <- -0.2
@@ -53,7 +56,7 @@ vb_diff_Linf <- -0.2
 ## intercept (a) and slope (b) in function that defines membership probabilities per MFCL area
 id_growth_a <- 0.75
 id_growth_b <- -0.25
-
+}
 ## function to specify probability of belonging to first VB class
 ##  - linear function of area (x) of the form a + b * (standardised) x
 assign_id_growth_prob <- function(x, a, b) {
@@ -407,6 +410,96 @@ om_p_catch_len <- om_p_catch_len %>%
 
 
 ################################################################################
+## objects used to parameterise estimation model
+################################################################################
+
+## compile TMB model fitting VB growth
+compile("../TMB/fit_vb_growth.cpp")
+
+## define length bin interval width in estimation model
+##  - used for sampling
+em_len_interval <- get_em_len_interval(mfcl_vb_pars$L_inf)
+
+## define target sampling rates
+## - expressed as a number of samples per 
+sampling_rates <- c(0.5, 1:10, 12, 15)
+
+## number of draws to use in simulations
+n_draws <- 1E2
+
+
+################################################################################
+## run simulations on a homogenous population
+##   - i.e., no spatial structure in growth
+################################################################################
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## age-based selectivities
+
+outputs_path <- "../results/a_skj_homogenous_age_sel"
+make_folder(outputs_path, recursive = TRUE)
+
+st.time <- proc.time()
+
+parallel::detectCores(logical = FALSE) - 1
+n.cores <- 4 
+
+sfInit(parallel = TRUE, cpus = n.cores, type = 'SOCK')
+
+sfLibrary(tidyr)
+sfLibrary(dplyr)
+sfLibrary(TMB)
+ttt <- sfClusterCall(source, './simulation_utils.R')
+#ttt <- sfClusterCall(source, './general_utils.R')
+
+sfExport(list = c("om_pop_len", "om_p_catch_len", "om_p_catch_age", "em_len_interval"))
+
+draws_age <- sfLapply(sampling_rates, simulate_wrapper, n_draws, simulate_fn = simulate_homogenous_sel_age)
+draws_age <- unlist(draws_age, recursive = FALSE)
+
+sfRemoveAll()
+sfStop()
+
+proc.time() - st.time
+
+## save simulated VB parameters
+writeRDS(draws_age, file = file.path(outputs_path, "simulated_VB_pars.RDS"))
+
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## length-based selectivities
+
+outputs_path <- "../results/a_skj_homogenous_len_sel"
+make_folder(outputs_path, recursive = TRUE)
+
+st.time <- proc.time()
+
+parallel::detectCores(logical = FALSE) - 1
+n.cores <- 4 
+
+sfInit(parallel = TRUE, cpus = n.cores, type = 'SOCK')
+
+sfLibrary(tidyr)
+sfLibrary(dplyr)
+sfLibrary(TMB)
+ttt <- sfClusterCall(source, './simulation_utils.R')
+#ttt <- sfClusterCall(source, './general_utils.R')
+
+sfExport(list = c("om_pop_len", "om_p_catch_len", "om_p_catch_age", "em_len_interval"))
+
+draws_len <- sfLapply(sampling_rates, simulate_wrapper, n_draws, simulate_fn = simulate_homogenous_sel_len)
+draws_len <- unlist(draws_age, recursive = FALSE)
+
+sfRemoveAll()
+sfStop()
+
+proc.time() - st.time
+
+## save simulated VB parameters
+writeRDS(draws_len, file = file.path(outputs_path, "simulated_VB_pars.RDS"))
+
+
+################################################################################
 ## testbed for functions
 ################################################################################
 
@@ -446,10 +539,47 @@ em_len_interval <- get_em_len_interval(mfcl_vb_pars$L_inf)
 catch_age <- catch_age %>% mutate(., em_len_class = em_len_interval * floor(len_class / em_len_interval))
 catch_len <- catch_len %>% mutate(., em_len_class = em_len_interval * floor(len_class / em_len_interval))
 
-x <- draw_samples_fos(catch_age, n_per_bin = 10)
-y <- draw_samples_pos(catch_age, n_per_bin = 10)
+samples_fos <- draw_samples_fos(catch_age, n_per_bin = 5)
+samples_pos <- draw_samples_pos(catch_age, n_per_bin = 5)
+
+samples_fos %>% ggplot() + geom_point(aes(x = age_class, y = em_len_class))
+samples_pos %>% ggplot() + geom_point(aes(x = age_class, y = em_len_class))
 
 
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## fit models to samples
+
+dyn.load(dynlib("../TMB/fit_vb_growth"))
+
+## fitted to fixed otolith sampling
+mod_data <- list(Y = samples_fos$em_len_class + 0.5 * em_len_interval, x = samples_fos$age_class)
+pars <- parameters <- list(log_L_inf = log(100), log_k = log(0.2), t_0 = 0, sigma_a = 0, sigma_b = 0)
+
+obj <- MakeADFun(mod_data, pars, DLL="fit_vb_growth")
+opt <- optim(obj$par, obj$fn, obj$gr)
+
+
+## fitted to proportional otolith sampling
+mod_data <- list(Y = samples_pos$em_len_class + 0.5 * em_len_interval, x = samples_pos$age_class)
+pars <- parameters <- list(log_L_inf = log(100), log_k = log(0.2), t_0 = 0, sigma_a = 0, sigma_b = 0)
+
+obj <- MakeADFun(mod_data, pars, DLL="fit_vb_growth")
+opt <- optim(obj$par, obj$fn, obj$gr)
+
+dyn.unload(dynlib("../TMB/fit_vb_growth"))
+
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## function to implement power analysis
+
+
+fitted_mod_summary <- function(x) {
+  out <- x$par %>% data.frame(.)
+  pars <- rownames(out)
+  rownames(out) <- NULL
+  colnames(out) <- "value"
+  out %>% mutate(., par = pars) %>% select(., par, everything())
+} 
 
 
 ################################################################################
