@@ -1,5 +1,6 @@
 ################################################################################
-## Run simulations for power analysis
+## Run simulations for power analysis of skipjack
+##  - with spatially-varying growth rates
 ################################################################################
 
 ## Set timezone to UTC, to prevent automatic conversion from UTC to local time
@@ -426,77 +427,6 @@ sampling_rates <- c(0.5, 1:10, 12, 15)
 
 ## number of draws to use in simulations
 n_draws <- 1E2
-
-
-################################################################################
-## run simulations on a homogenous population
-##   - i.e., no spatial structure in growth
-################################################################################
-
-##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## age-based selectivities
-
-outputs_path <- "../results/a_skj_homogenous_age_sel"
-make_folder(outputs_path, recursive = TRUE)
-
-st.time <- proc.time()
-
-parallel::detectCores(logical = FALSE) - 1
-n.cores <- 4 
-
-sfInit(parallel = TRUE, cpus = n.cores, type = 'SOCK')
-
-sfLibrary(tidyr)
-sfLibrary(dplyr)
-sfLibrary(TMB)
-ttt <- sfClusterCall(source, './simulation_utils.R')
-#ttt <- sfClusterCall(source, './general_utils.R')
-
-sfExport(list = c("om_pop_len", "om_p_catch_len", "om_p_catch_age", "em_len_interval"))
-
-draws_age <- sfLapply(sampling_rates, simulate_wrapper, n_draws, simulate_fn = simulate_homogenous_sel_age)
-draws_age <- unlist(draws_age, recursive = FALSE)
-
-sfRemoveAll()
-sfStop()
-
-proc.time() - st.time
-
-## save simulated VB parameters
-writeRDS(draws_age, file = file.path(outputs_path, "simulated_VB_pars.RDS"))
-
-
-##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## length-based selectivities
-
-outputs_path <- "../results/a_skj_homogenous_len_sel"
-make_folder(outputs_path, recursive = TRUE)
-
-st.time <- proc.time()
-
-parallel::detectCores(logical = FALSE) - 1
-n.cores <- 4 
-
-sfInit(parallel = TRUE, cpus = n.cores, type = 'SOCK')
-
-sfLibrary(tidyr)
-sfLibrary(dplyr)
-sfLibrary(TMB)
-ttt <- sfClusterCall(source, './simulation_utils.R')
-#ttt <- sfClusterCall(source, './general_utils.R')
-
-sfExport(list = c("om_pop_len", "om_p_catch_len", "om_p_catch_age", "em_len_interval"))
-
-draws_len <- sfLapply(sampling_rates, simulate_wrapper, n_draws, simulate_fn = simulate_homogenous_sel_len)
-draws_len <- unlist(draws_age, recursive = FALSE)
-
-sfRemoveAll()
-sfStop()
-
-proc.time() - st.time
-
-## save simulated VB parameters
-writeRDS(draws_len, file = file.path(outputs_path, "simulated_VB_pars.RDS"))
 
 
 ################################################################################
