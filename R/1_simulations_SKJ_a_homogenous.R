@@ -392,7 +392,7 @@ compile("../TMB/fit_vb_growth.cpp")
 em_len_interval <- get_em_len_interval(mfcl_vb_pars$L_inf)
 
 ## define target sampling rates
-## - expressed as a number of samples per 
+## - expressed as a number of samples per length class of sampling
 sampling_rates <- c(0.5, 1:10, 12, 15)
 
 ## number of draws to use in simulations
@@ -407,13 +407,13 @@ n_draws <- 1E2
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## age-based selectivities
 
-outputs_path <- "../results/a_skj_homogenous_age_sel"
+outputs_path <- "../results/a_skj_homogenous_sel_age"
 make_folder(outputs_path, recursive = TRUE)
 
 st.time <- proc.time()
 
 parallel::detectCores(logical = FALSE) - 1
-n.cores <- 4 
+n.cores <- 4
 
 sfInit(parallel = TRUE, cpus = n.cores, type = 'SOCK')
 
@@ -434,20 +434,21 @@ sfStop()
 proc.time() - st.time
 ## c. 4 minutes with 100 draws and 4 cores
 
-## save simulated VB parameters
+## save simulated VB parameters and OM VB pars
 saveRDS(draws_age, file = file.path(outputs_path, "simulated_VB_pars.RDS"))
+saveRDS(om_vb_pars, file = file.path(outputs_path, "om_VB_pars.RDS"))
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## length-based selectivities
 
-outputs_path <- "../results/a_skj_homogenous_len_sel"
+outputs_path <- "../results/a_skj_homogenous_sel_len"
 make_folder(outputs_path, recursive = TRUE)
 
 st.time <- proc.time()
 
 parallel::detectCores(logical = FALSE) - 1
-n.cores <- 4 
+n.cores <- 4
 
 sfInit(parallel = TRUE, cpus = n.cores, type = 'SOCK')
 
@@ -468,8 +469,9 @@ sfStop()
 proc.time() - st.time
 ## c. 4 minutes with 100 draws and 4 cores
 
-## save simulated VB parameters
+## save simulated VB parameters and OM VB pars
 saveRDS(draws_len, file = file.path(outputs_path, "simulated_VB_pars.RDS"))
+saveRDS(om_vb_pars, file = file.path(outputs_path, "om_VB_pars.RDS"))
 
 
 ################################################################################
