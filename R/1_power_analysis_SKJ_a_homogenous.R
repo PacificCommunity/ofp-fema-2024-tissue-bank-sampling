@@ -423,7 +423,7 @@ sfLibrary(TMB)
 ttt <- sfClusterCall(source, './simulation_utils.R')
 #ttt <- sfClusterCall(source, './general_utils.R')
 
-sfExport(list = c("om_pop_len", "om_p_catch_len", "om_p_catch_age", "em_len_interval"))
+sfExport(list = c("om_pop_len", "om_p_catch_age", "em_len_interval"))
 
 draws_age <- sfLapply(sampling_rates, simulate_wrapper, n_draws, simulate_fn = simulate_homogenous_sel_age)
 draws_age <- unlist(draws_age, recursive = FALSE)
@@ -435,7 +435,7 @@ proc.time() - st.time
 ## c. 4 minutes with 100 draws and 4 cores
 
 ## save simulated VB parameters
-writeRDS(draws_age, file = file.path(outputs_path, "simulated_VB_pars.RDS"))
+saveRDS(draws_age, file = file.path(outputs_path, "simulated_VB_pars.RDS"))
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -457,7 +457,7 @@ sfLibrary(TMB)
 ttt <- sfClusterCall(source, './simulation_utils.R')
 #ttt <- sfClusterCall(source, './general_utils.R')
 
-sfExport(list = c("om_pop_len", "om_p_catch_len", "om_p_catch_age", "em_len_interval"))
+sfExport(list = c("om_pop_len", "om_p_catch_len", "em_len_interval"))
 
 draws_len <- sfLapply(sampling_rates, simulate_wrapper, n_draws, simulate_fn = simulate_homogenous_sel_len)
 draws_len <- unlist(draws_len, recursive = FALSE)
@@ -469,7 +469,7 @@ proc.time() - st.time
 ## c. 4 minutes with 100 draws and 4 cores
 
 ## save simulated VB parameters
-writeRDS(draws_len, file = file.path(outputs_path, "simulated_VB_pars.RDS"))
+saveRDS(draws_len, file = file.path(outputs_path, "simulated_VB_pars.RDS"))
 
 
 ################################################################################
