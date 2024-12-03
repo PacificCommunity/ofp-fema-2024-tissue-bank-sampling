@@ -255,3 +255,18 @@ simulate_homogenous_sel_len <- function(sampling_rate, id_draw) {
 simulate_wrapper <- function(sampling_rate, n_draws, simulate_fn) {
   lapply(1:n_draws, function(x) simulate_fn(sampling_rate, id_draw = x))
 }
+
+## get fitted parameters from object returned by optim
+fitted_mod_summary <- function(x) {
+  out <- x$par %>% data.frame(.)
+  pars <- names(x$par)
+
+  ## tidy up data-frame
+  rownames(out) <- NULL
+  colnames(out) <- "value"
+  out <- out %>% mutate(., par = pars) %>% select(., par, everything())
+
+  ## if model did not successfully converge, set values to NA
+  if(x$convergence != 1) out$value <- NA
+  out
+}
