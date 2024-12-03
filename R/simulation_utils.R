@@ -166,7 +166,7 @@ draw_samples_pos <- function(x, n_per_bin) {
 }
 
 ## simulate sampling with selectivity at age, from homogenous population
-simulate_homogenous_sel_age <- function(id_draw, sampling_rate) {
+simulate_homogenous_sel_age <- function(sampling_rate, id_draw) {
   ## draw catch
   catch_draw <- draw_catch_age(om_p_catch_age, om_pop_len)
   catch_draw <- catch_draw %>% mutate(., em_len_class = em_len_interval * floor(len_class / em_len_interval))
@@ -208,7 +208,7 @@ simulate_homogenous_sel_age <- function(id_draw, sampling_rate) {
 }
 
 ## simulate sampling with selectivity at age, from homogenous population
-simulate_homogenous_sel_len <- function(id_draw, sampling_rate) {
+simulate_homogenous_sel_len <- function(sampling_rate, id_draw) {
   ## draw catch
   catch_draw <- draw_catch_len(om_p_catch_len, om_pop_len)
   catch_draw <- catch_draw %>% mutate(., em_len_class = em_len_interval * floor(len_class / em_len_interval))
@@ -237,14 +237,21 @@ simulate_homogenous_sel_len <- function(id_draw, sampling_rate) {
   dyn.unload(dynlib("../TMB/fit_vb_growth"))
 
   ## add meta-data to fitted model objects
+  opt_fos[["sampling_scheme"]] <- "FOS"
   opt_fos[["sampling_rate"]] <- sampling_rate
   opt_fos[["samples"]] <- nrow(samples_fos)
   opt_fos[["id_draw"]] <- id_draw
 
+  opt_pos[["sampling_scheme"]] <- "POS"
   opt_pos[["sampling_rate"]] <- sampling_rate
   opt_pos[["samples"]] <- nrow(samples_pos)
   opt_pos[["id_draw"]] <- id_draw
 
   ## return fitted models
   list(opt_fos, opt_pos)
+}
+
+## wrapper fn to run simulations for a given sampling rate
+simulate_wrapper <- function(sampling_rate, n_draws, simulate_fn) {
+  lapply(1:n_draws, function(x) simulate_fn(sampling_rate, id_draw = x))
 }
