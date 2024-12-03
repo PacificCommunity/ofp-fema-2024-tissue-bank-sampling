@@ -231,7 +231,7 @@ simulate_homogenous_sel_len <- function(sampling_rate, id_draw) {
   
   ## ii - POS
   mod_data <- list(Y = samples_pos$em_len_class + 0.5 * em_len_interval, x = samples_pos$age_class)
-  pars <- parameters <- list(log_L_inf = log(100), log_k = log(0.2), t_0 = 0, sigma_a = 0, sigma_b = 0)
+  pars <- parameters <- list(log_L_inf = log(100), log_k = log(0.2), log_t_0 = 0, sigma_a = 0, sigma_b = 0)
 
   obj <- MakeADFun(mod_data, pars, DLL = "fit_vb_growth")
   opt_pos <- optim(obj$par, obj$fn, obj$gr, method = "BFGS", control = list(maxit = 5E2))
@@ -259,16 +259,26 @@ simulate_wrapper <- function(sampling_rate, n_draws, simulate_fn) {
 }
 
 ## get fitted parameters from object returned by optim
-fitted_mod_summary <- function(x) {
+get_fitted_mod_pars <- function(x) {
+  ## information on draw
+  out_base <- data.frame(
+    sampling_scheme = x$sampling_scheme, sampling_rate = x$sampling_rate,
+    samples = x$samples, id_draw = x$id_draw)
+  
   out <- x$par %>% data.frame(.)
   pars <- names(x$par)
 
-  ## tidy up data-frame
+  ## tidy up data-frame with estimated parameters
   rownames(out) <- NULL
   colnames(out) <- "value"
   out <- out %>% mutate(., par = pars) %>% select(., par, everything())
 
   ## if model did not successfully converge, set values to NA
-  if(x$convergence != 1) out$value <- NA
-  out
+  if(x$convergence != 0L) out$value <- NA
+  
+  ## convert to wide format
+  out <- out %>% pivot_wider(., names_from = par, values_from = value)
+  
+  ## add meta-data
+  expand_grid(out_base, out)
 }
