@@ -91,7 +91,7 @@ draw_samples_fos <- function(x, n_per_bin) {
   ## get total number of length classes
   n_bins <- x %>% select(., em_len_class) %>% distinct(.) %>% nrow(.)
   total_samples <- n_bins * n_per_bin
-  
+
   ## get length classes with some catch
   prop_len_classes <- x %>% prep_catch_for_sampling(., c(em_len_class)) %>%
     mutate(., prop = catch / sum(catch)) %>%
@@ -99,10 +99,10 @@ draw_samples_fos <- function(x, n_per_bin) {
 
   ## allocate samples evenly amongst length classes
   prop_len_classes <- prop_len_classes %>% mutate(., target_samples = total_samples / length(prop))
-  
+
   ## aggregate to sampling resolution
   x <- x %>% prep_catch_for_sampling(., c(age_class, em_len_class))
-  
+
   ## for each em_len_class, draw age samples at random
   ages <- lapply(1:nrow(prop_len_classes), function(i) {
     ## filter for length class
@@ -112,7 +112,7 @@ draw_samples_fos <- function(x, n_per_bin) {
     ## get target sample size, and convert to integer
     target_n <- prop_len_classes$target_samples[i]
     target_n <- target_samples_to_integer(target_n)
-    
+
     ## sample at random from ages
     ##  - adjust target sample size for instances where < total catch
     ##  - add small amount to probs = 0 to avoid errors (if limited number of non-zero probs)
@@ -180,14 +180,14 @@ simulate_homogenous_sel_age <- function(sampling_rate, id_draw) {
 
   ## i - FOS
   mod_data <- list(Y = samples_fos$em_len_class + 0.5 * em_len_interval, x = samples_fos$age_class)
-  pars <- parameters <- list(log_L_inf = log(100), log_k = log(0.2), t_0 = 0, sigma_a = 0, sigma_b = 0)
+  pars <- parameters <- list(log_L_inf = log(100), log_k = log(0.2), log_t_0 = log(0.1), sigma_a = 0, sigma_b = 0)
 
   obj <- MakeADFun(mod_data, pars, DLL = "fit_vb_growth")
   opt_fos <- optim(obj$par, obj$fn, obj$gr, method = "BFGS", control = list(maxit = 5E2))
 
   ## ii - POS
   mod_data <- list(Y = samples_pos$em_len_class + 0.5 * em_len_interval, x = samples_pos$age_class)
-  pars <- parameters <- list(log_L_inf = log(100), log_k = log(0.2), t_0 = 0, sigma_a = 0, sigma_b = 0)
+  pars <- parameters <- list(log_L_inf = log(100), log_k = log(0.2), log_t_0 = log(0.1), sigma_a = 0, sigma_b = 0)
 
   obj <- MakeADFun(mod_data, pars, DLL = "fit_vb_growth")
   opt_pos <- optim(obj$par, obj$fn, obj$gr, method = "BFGS", control = list(maxit = 5E2))
@@ -224,14 +224,14 @@ simulate_homogenous_sel_len <- function(sampling_rate, id_draw) {
 
   ## i - FOS
   mod_data <- list(Y = samples_fos$em_len_class + 0.5 * em_len_interval, x = samples_fos$age_class)
-  pars <- parameters <- list(log_L_inf = log(100), log_k = log(0.2), t_0 = 0, sigma_a = 0, sigma_b = 0)
+  pars <- parameters <- list(log_L_inf = log(100), log_k = log(0.2), log_t_0 = log(0.1), sigma_a = 0, sigma_b = 0)
 
   obj <- MakeADFun(mod_data, pars, DLL = "fit_vb_growth")
   opt_fos <- optim(obj$par, obj$fn, obj$gr, method = "BFGS", control = list(maxit = 5E2))
-  
+
   ## ii - POS
   mod_data <- list(Y = samples_pos$em_len_class + 0.5 * em_len_interval, x = samples_pos$age_class)
-  pars <- parameters <- list(log_L_inf = log(100), log_k = log(0.2), log_t_0 = 0, sigma_a = 0, sigma_b = 0)
+  pars <- parameters <- list(log_L_inf = log(100), log_k = log(0.2), log_t_0 = log(0.1), sigma_a = 0, sigma_b = 0)
 
   obj <- MakeADFun(mod_data, pars, DLL = "fit_vb_growth")
   opt_pos <- optim(obj$par, obj$fn, obj$gr, method = "BFGS", control = list(maxit = 5E2))
@@ -264,7 +264,7 @@ get_fitted_mod_pars <- function(x) {
   out_base <- data.frame(
     sampling_scheme = x$sampling_scheme, sampling_rate = x$sampling_rate,
     samples = x$samples, id_draw = x$id_draw)
-  
+
   out <- x$par %>% data.frame(.)
   pars <- names(x$par)
 
@@ -275,10 +275,10 @@ get_fitted_mod_pars <- function(x) {
 
   ## if model did not successfully converge, set values to NA
   if(x$convergence != 0L) out$value <- NA
-  
+
   ## convert to wide format
   out <- out %>% pivot_wider(., names_from = par, values_from = value)
-  
+
   ## add meta-data
   expand_grid(out_base, out)
 }
