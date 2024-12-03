@@ -164,3 +164,45 @@ draw_samples_pos <- function(x, n_per_bin) {
 
   bind_rows(ages)
 }
+
+## simulate sampling with selectivity at age, from homogenous population
+simulate_homogenous_sel_age <- function(id_draw, sampling_rate) {
+  ## draw catch
+  catch_draw <- draw_catch_age(om_p_catch_age, om_pop_len)
+  catch_draw <- catch_draw %>% mutate(., em_len_class = em_len_interval * floor(len_class / em_len_interval))
+  
+  ## draw samples from catch
+  samples_fos <- draw_samples_fos(catch_draw, n_per_bin = sampling_rate)
+  samples_pos <- draw_samples_pos(catch_draw, n_per_bin = sampling_rate)
+  
+  ## fit VB model to samples
+  dyn.load(dynlib("../TMB/fit_vb_growth"))
+  
+  ## i - FOS  
+  mod_data <- list(Y = samples_fos$em_len_class + 0.5 * em_len_interval, x = samples_fos$age_class)
+  pars <- parameters <- list(log_L_inf = log(100), log_k = log(0.2), t_0 = 0, sigma_a = 0, sigma_b = 0)
+  
+  obj <- MakeADFun(mod_data, pars, DLL = "fit_vb_growth")
+  opt_fos <- optim(obj$par, obj$fn, obj$gr, method = "BFGS", control = list(maxit = 5E2))
+  
+  ## ii - POS  
+  mod_data <- list(Y = samples_pos$em_len_class + 0.5 * em_len_interval, x = samples_pos$age_class)
+  pars <- parameters <- list(log_L_inf = log(100), log_k = log(0.2), t_0 = 0, sigma_a = 0, sigma_b = 0)
+  
+  obj <- MakeADFun(mod_data, pars, DLL = "fit_vb_growth")
+  opt_pos <- optim(obj$par, obj$fn, obj$gr, method = "BFGS", control = list(maxit = 5E2))
+  
+  dyn.unload(dynlib("../TMB/fit_vb_growth"))
+  
+  ## add meta-data to fitted model objects
+  opt_fos[["sampling_rate"]] <- sampling_rate
+  opt_fos[["samples"]] <- nrow(samples_fos)
+  opt_fos[["id_draw"]] <- id_draw
+  
+  opt_pos[["sampling_rate"]] <- sampling_rate
+  opt_pos[["samples"]] <- nrow(samples_pos)
+  opt_pos[["id_draw"]] <- id_draw
+  
+  ## return fitted models
+  list(opt_fos, opt_pos)
+}
