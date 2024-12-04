@@ -262,6 +262,18 @@ simulate_wrapper <- function(sampling_rate, n_draws, simulate_fn) {
   lapply(1:n_draws, function(x) simulate_fn(sampling_rate, id_draw = x))
 }
 
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## functions for processing results from simulations
+
+## get quantiles for boxplots
+summary_fn_boxplot <- function(x, var, ...) {
+  summarise(x, lq = as.numeric(quantile({{ var }}, probs = 0.025, ...)), lmq = as.numeric(quantile({{ var }}, probs = 0.25, ...)),
+            mq = as.numeric(quantile({{ var }}, probs = 0.5, ...)),
+            umq = as.numeric(quantile({{ var }}, probs = 0.75, ...)), uq = as.numeric(quantile({{ var }}, probs = 0.975, ...)),
+            mn = mean({{ var }}, ...))
+}
+
 ## get fitted parameters from object returned by optim
 get_fitted_mod_pars <- function(x) {
   ## information on draw
