@@ -99,7 +99,7 @@ plt <- plt_data %>% ggplot(.) +
   geom_boxplot(aes(x = factor(sampling_rate, levels = sampling_rates),
                    ymin = lq, lower = lmq, middle = mq, upper = umq, ymax = uq), stat = "identity") +
   facet_grid(rows = vars(par), cols = vars(sampling_scheme), scales = "free_y") +
-  xlab("Sampling rate (average per length class)")
+  xlab("Sampling rate (mean per length class)")
 
 ## and add true values
 plt <- plt + geom_hline(aes(yintercept = value), linewidth = 0.75, col = "red", alpha = 0.5, data = plt_om_data)
@@ -150,9 +150,6 @@ ggsave("b_VB_mean_len_trajectories.png", width = 10, height = 8, units = "in", p
 ## Plots of estimated CV in mean length at age against 'true' value
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## generate plot of growth trajectories
-
 plt_data <- simulated_growth_curves %>% filter(., sampling_rate %in% sampling_rates_subset)
 
 plt_om_data <- om_len_age %>% select(., age_class, cv_len) %>% 
@@ -166,6 +163,35 @@ plt <- plt_data %>% ggplot(.) +
   xlab("Age (quarters)") + ylab("CV of mean length")
 
 ggsave("c_VB_CV_mean_len_trajectories.png", width = 10, height = 8, units = "in", path = outputs_path)
+
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## Plots RMSE of estimated length at age against 'true' value
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+col_schemes <- ito_cols[c(1, 6)]
+names(col_schemes) <- c("FOS", "POS")
+
+## combine estimated and true mean len
+plt_data <- simulated_growth_curves
+plt_data <- om_growth_curve %>% select(., age_class, mean_len) %>%
+  rename(., ref_mean_len = mean_len) %>%
+  left_join(plt_data, ., by = "age_class")
+
+## add RMSE
+plt_data <- plt_data %>% mutate(., error = mean_len - ref_mean_len)
+plt_data <- plt_data %>% group_by(., sampling_scheme, sampling_rate) %>%
+  summarise(., rmse = sqrt(sum(error^2, na.rm = TRUE) / sum(!is.na(error)))) %>% 
+  data.frame(.)
+
+plt <- plt_data %>% ggplot(., aes(x = sampling_rate, y = rmse, col = sampling_scheme)) +
+  geom_line(linewidth = 0.75) +
+  geom_point(shape = 4) +
+  coord_cartesian(ylim = c(0, NA)) +
+  scale_colour_manual("Sampling approach", values = col_schemes) +
+  xlab("Sampling rate (mean per length class)") + ylab("RMSE")
+
+ggsave("d_VB_mean_len_RMSE.png", width = 8, height = 5, units = "in", path = outputs_path)
 
 
 ################################################################################
