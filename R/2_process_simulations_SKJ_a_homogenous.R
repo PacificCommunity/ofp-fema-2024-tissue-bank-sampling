@@ -57,13 +57,20 @@ if(all("log_L_inf" %in% colnames(simulated_vb_pars), "log_k" %in% colnames(simul
 }
 
 
+## age range for predictions of length-at-age
+age_range <- range(om_len_age$age_class)
+age_range <- seq(age_range[1], age_range[2], by = 0.1)
+
+## sampling schemes and rates to use for plots
+sampling_rates <- unique(simulated_vb_pars$sampling_rate)
+sampling_rates_subset <- sampling_rates[sampling_rates %in% c(1, 2, 5, 10, 15)]
+
+sampling_schemes <- unique(simulated_vb_pars$sampling_scheme)
+
+
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## Plots of VB pars against 'true' values
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-
-sampling_rates <- unique(simulated_vb_pars$sampling_rate)
-sampling_schemes <- unique(simulated_vb_pars$sampling_scheme)
-
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## prepare simulated VB pars
@@ -95,7 +102,7 @@ plt <- plt_data %>% ggplot(.) +
   xlab("Sampling rate (average per length class)")
 
 ## and add true values
-plt <- plt + geom_hline(aes(yintercept = value), linewidth = 0.75, alpha = 0.5, data = plt_om_data)
+plt <- plt + geom_hline(aes(yintercept = value), linewidth = 0.75, col = "red", alpha = 0.5, data = plt_om_data)
 
 ggsave("a_VB_par_estimates.png", width = 10, height = 8, units = "in", path = outputs_path)
 
@@ -104,9 +111,13 @@ ggsave("a_VB_par_estimates.png", width = 10, height = 8, units = "in", path = ou
 ## Plots of estimated mean length trajectories against 'true' value
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-## age range for predictions of length-at-age
-age_range <- range(om_len_age$age_class)
-age_range <- seq(age_range[1], age_range[2], by = 0.1)
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## prepare growth curves from simulated VB parameters
+
+simulated_growth_curves <- simulated_vb_pars %>%
+  expand_grid(., age_class = age_range) %>%
+  mutate(., mean_len = vb_growth(age_class, L_inf, k, t_0),
+         sd_len = exp(sigma_a + sigma_b * log(mean_len)), cv_len = sd_len / mean_len)
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -118,27 +129,43 @@ om_growth_curve <- om_vb_pars %>%
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## prepare growth curves from simulated VB parameters
-
-simulated_growth_curve <- simulated_vb_pars %>%
-  expand_grid(., age_class = age_range) %>%
-  mutate(., mean_len = vb_growth(age_class, L_inf, k, t_0))
-
-
-##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## generate plot of growth trajectories
 
-plt_om_data <- om_growth_curve %>%
-  expand_grid(sampling_scheme = sampling_schemes, sampling_rate = sampling_rates, .)
+plt_data <- simulated_growth_curves %>% filter(., sampling_rate %in% sampling_rates_subset)
 
-plt <- simulated_growth_curve %>% ggplot(.) +
+plt_om_data <- om_growth_curve %>%
+  expand_grid(sampling_scheme = sampling_schemes, sampling_rate = sampling_rates_subset, .)
+
+plt <- plt_data %>% ggplot(.) +
   geom_line(aes(x = age_class, y = mean_len, group = id_draw), alpha = 0.05) +
-  geom_line(aes(x = age_class, y = mean_len), col = "red", data = plt_om_data) +
+  geom_line(aes(x = age_class, y = mean_len), col = "red", alpha = 0.5, data = plt_om_data) +
   facet_grid(rows = vars(sampling_rate), cols = vars(sampling_scheme)) +
   coord_cartesian(ylim = c(0, NA)) +
   xlab("Age (quarters)") + ylab("Mean length (cm)")
 
 ggsave("b_VB_mean_len_trajectories.png", width = 10, height = 8, units = "in", path = outputs_path)
+
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## Plots of estimated CV in mean length at age against 'true' value
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## generate plot of growth trajectories
+
+plt_data <- simulated_growth_curves %>% filter(., sampling_rate %in% sampling_rates_subset)
+
+plt_om_data <- om_len_age %>% select(., age_class, cv_len) %>% 
+  expand_grid(sampling_scheme = sampling_schemes, sampling_rate = sampling_rates_subset, .)
+
+plt <- plt_data %>% ggplot(.) +
+  geom_line(aes(x = age_class, y = cv_len, group = id_draw), alpha = 0.05) +
+  geom_smooth(aes(x = age_class, y = cv_len), se = FALSE, linewidth = 0.5, col = "red", alpha = 0.5, data = plt_om_data) +
+  facet_grid(rows = vars(sampling_rate), cols = vars(sampling_scheme)) +
+  coord_cartesian(ylim = c(0, NA)) +
+  xlab("Age (quarters)") + ylab("CV of mean length")
+
+ggsave("c_VB_CV_mean_len_trajectories.png", width = 10, height = 8, units = "in", path = outputs_path)
 
 
 ################################################################################
