@@ -15,7 +15,9 @@ library(snowfall)
 source('general_utils.R')
 source('simulation_utils.R')
 
+## set ggplot theme to theme_bw
 theme_set(theme_bw())
+theme_update(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 
 
 ################################################################################
@@ -435,8 +437,9 @@ proc.time() - st.time
 ## c. 4 minutes with 100 draws and 4 cores
 
 ## save simulated VB parameters and OM VB pars
-saveRDS(draws_age, file = file.path(outputs_path, "simulated_VB_pars.RDS"))
 saveRDS(om_vb_pars, file = file.path(outputs_path, "om_VB_pars.RDS"))
+saveRDS(om_len_at_age, file = file.path(outputs_path, "om_len_age.RDS"))
+saveRDS(draws_age, file = file.path(outputs_path, "simulated_VB_pars.RDS"))
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -470,8 +473,9 @@ proc.time() - st.time
 ## c. 4 minutes with 100 draws and 4 cores
 
 ## save simulated VB parameters and OM VB pars
-saveRDS(draws_len, file = file.path(outputs_path, "simulated_VB_pars.RDS"))
 saveRDS(om_vb_pars, file = file.path(outputs_path, "om_VB_pars.RDS"))
+saveRDS(om_len_at_age, file = file.path(outputs_path, "om_len_age.RDS"))
+saveRDS(draws_len, file = file.path(outputs_path, "simulated_VB_pars.RDS"))
 
 
 ################################################################################
