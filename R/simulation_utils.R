@@ -180,18 +180,20 @@ simulate_homogenous_sel_age <- function(sampling_rate, id_draw) {
 
   ## i - FOS
   mod_data <- list(Y = samples_fos$em_len_class + 0.5 * em_len_interval, x = samples_fos$age_class)
-  pars <- parameters <- list(log_L_inf = log(100), log_k = log(0.2), log_t_0 = log(0.1), sigma_a = 0, sigma_b = 0)
+  pars <- parameters <- list(L_inf = 50, k = 0.1, t_0 = 0, sigma_a = 0, sigma_b = 0)
 
   obj <- MakeADFun(mod_data, pars, DLL = "fit_vb_growth")
-  opt_fos <- optim(obj$par, obj$fn, obj$gr, method = "BFGS", control = list(maxit = 5E2))
-
+  ##opt_fos <- optim(obj$par, obj$fn, obj$gr, method = "BFGS", control = list(maxit = 5E2))
+  opt_fos <- nlminb(obj$par, obj$fn, obj$gr, control = list(eval.max = 5E2, iter.max = 2.5E2))
+  
   ## ii - POS
   mod_data <- list(Y = samples_pos$em_len_class + 0.5 * em_len_interval, x = samples_pos$age_class)
-  pars <- parameters <- list(log_L_inf = log(100), log_k = log(0.2), log_t_0 = log(0.1), sigma_a = 0, sigma_b = 0)
-
+  pars <- parameters <- list(L_inf = 50, k = 0.1, t_0 = 0, sigma_a = 0, sigma_b = 0)
+  
   obj <- MakeADFun(mod_data, pars, DLL = "fit_vb_growth")
-  opt_pos <- optim(obj$par, obj$fn, obj$gr, method = "BFGS", control = list(maxit = 5E2))
-
+  ##opt_pos <- optim(obj$par, obj$fn, obj$gr, method = "BFGS", control = list(maxit = 5E2))
+  opt_pos <- nlminb(obj$par, obj$fn, obj$gr, control = list(eval.max = 5E2, iter.max = 2.5E2))
+  
   dyn.unload(dynlib("../TMB/fit_vb_growth"))
 
   ## add meta-data to fitted model objects
@@ -224,18 +226,20 @@ simulate_homogenous_sel_len <- function(sampling_rate, id_draw) {
 
   ## i - FOS
   mod_data <- list(Y = samples_fos$em_len_class + 0.5 * em_len_interval, x = samples_fos$age_class)
-  pars <- parameters <- list(log_L_inf = log(100), log_k = log(0.2), log_t_0 = log(0.1), sigma_a = 0, sigma_b = 0)
-
+  pars <- parameters <- list(L_inf = 50, k = 0.1, t_0 = 0, sigma_a = 0, sigma_b = 0)
+  
   obj <- MakeADFun(mod_data, pars, DLL = "fit_vb_growth")
-  opt_fos <- optim(obj$par, obj$fn, obj$gr, method = "BFGS", control = list(maxit = 5E2))
-
+  ##opt_fos <- optim(obj$par, obj$fn, obj$gr, method = "BFGS", control = list(maxit = 5E2))
+  opt_fos <- nlminb(obj$par, obj$fn, obj$gr, control = list(eval.max = 5E2, iter.max = 2.5E2))
+  
   ## ii - POS
   mod_data <- list(Y = samples_pos$em_len_class + 0.5 * em_len_interval, x = samples_pos$age_class)
-  pars <- parameters <- list(log_L_inf = log(100), log_k = log(0.2), log_t_0 = log(0.1), sigma_a = 0, sigma_b = 0)
-
+  pars <- parameters <- list(L_inf = 50, k = 0.1, t_0 = 0, sigma_a = 0, sigma_b = 0)
+  
   obj <- MakeADFun(mod_data, pars, DLL = "fit_vb_growth")
-  opt_pos <- optim(obj$par, obj$fn, obj$gr, method = "BFGS", control = list(maxit = 5E2))
-
+  ##opt_pos <- optim(obj$par, obj$fn, obj$gr, method = "BFGS", control = list(maxit = 5E2))
+  opt_pos <- nlminb(obj$par, obj$fn, obj$gr, control = list(eval.max = 5E2, iter.max = 2.5E2))
+  
   dyn.unload(dynlib("../TMB/fit_vb_growth"))
 
   ## add meta-data to fitted model objects
