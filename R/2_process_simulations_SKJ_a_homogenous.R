@@ -39,6 +39,7 @@ outputs_path <- file.path(results_folder, "a_skj_homogenous_sel_len")
 ## Prepare simulated VB pars, and those from operating model
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
+om_len_age <- readRDS(file.path(outputs_path, "om_len_age.RDS"))
 om_vb_pars <- readRDS(file.path(outputs_path, "om_VB_pars.RDS"))
 simulated_vb_pars <- readRDS(file.path(outputs_path, "simulated_VB_pars.RDS"))
 
@@ -63,7 +64,10 @@ if(all("log_L_inf" %in% colnames(simulated_vb_pars), "log_k" %in% colnames(simul
 sampling_rates <- unique(simulated_vb_pars$sampling_rate)
 sampling_schemes <- unique(simulated_vb_pars$sampling_scheme)
 
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## prepare simulated VB pars
+
 plt_data <- simulated_vb_pars %>%
   select(., sampling_scheme, sampling_rate, samples, id_draw, L_inf, k, t_0) %>%
   pivot_longer(., cols = c(L_inf, k, t_0), names_to = "par", values_to = "value")
@@ -72,12 +76,18 @@ plt_data <- simulated_vb_pars %>%
 plt_data <- plt_data %>% group_by(., sampling_scheme, sampling_rate, par) %>%
   summary_fn_boxplot(., value, na.rm = TRUE) %>% ungroup(.)
 
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## reformat OM parameter estimates to add to plots
+
 plt_om_data <- om_vb_pars %>%
   pivot_longer(., cols = c(L_inf, k, t_0), names_to = "par", values_to = "value") %>%
   expand_grid(sampling_scheme = sampling_schemes, .)
 
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## make plot of simulated VB pars
+
 plt <- plt_data %>% ggplot(.) +
   geom_boxplot(aes(x = factor(sampling_rate, levels = sampling_rates),
                    ymin = lq, lower = lmq, middle = mq, upper = umq, ymax = uq), stat = "identity") +
@@ -86,7 +96,49 @@ plt <- plt_data %>% ggplot(.) +
 
 ## and add true values
 plt <- plt + geom_hline(aes(yintercept = value), linewidth = 0.75, alpha = 0.5, data = plt_om_data)
+
 ggsave("a_VB_par_estimates.png", width = 10, height = 8, units = "in", path = outputs_path)
+
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## Plots of estimated mean length trajectories against 'true' value
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+
+## age range for predictions of length-at-age
+age_range <- range(om_len_age$age_class)
+age_range <- seq(age_range[1], age_range[2], by = 0.1)
+
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## prepare growth curve from operating model
+
+om_growth_curve <- om_vb_pars %>%
+  expand_grid(., age_class = age_range) %>%
+  mutate(., mean_len = vb_growth(age_class, L_inf, k, t_0))
+
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## prepare growth curves from simulated VB parameters
+
+simulated_growth_curve <- simulated_vb_pars %>%
+  expand_grid(., age_class = age_range) %>%
+  mutate(., mean_len = vb_growth(age_class, L_inf, k, t_0))
+
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## generate plot of growth trajectories
+
+plt_om_data <- om_growth_curve %>%
+  expand_grid(sampling_scheme = sampling_schemes, sampling_rate = sampling_rates, .)
+
+plt <- simulated_growth_curve %>% ggplot(.) +
+  geom_line(aes(x = age_class, y = mean_len, group = id_draw), alpha = 0.05) +
+  geom_line(aes(x = age_class, y = mean_len), col = "red", data = plt_om_data) +
+  facet_grid(rows = vars(sampling_rate), cols = vars(sampling_scheme)) +
+  coord_cartesian(ylim = c(0, NA)) +
+  xlab("Age (quarters)") + ylab("Mean length (cm)")
+
+ggsave("b_VB_mean_len_trajectories.png", width = 10, height = 8, units = "in", path = outputs_path)
 
 
 ################################################################################
