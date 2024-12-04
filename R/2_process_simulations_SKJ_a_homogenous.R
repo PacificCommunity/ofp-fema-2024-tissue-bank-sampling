@@ -13,18 +13,22 @@ library(tidyr)
 source('general_utils.R')
 source('simulation_utils.R')
 
+## set ggplot theme to theme_bw
 theme_set(theme_bw())
+theme_update(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 
 
 ################################################################################
 ## Set path to simulations
 ################################################################################
 
+results_folder <- "../results"
+
 ## selectivity at age
-outputs_path <- "../results/a_skj_homogenous_sel_age"
+outputs_path <- file.path(results_folder, "a_skj_homogenous_sel_age")
 
 ## selectivity at length
-outputs_path <- "../results/a_skj_homogenous_sel_len"
+outputs_path <- file.path(results_folder, "a_skj_homogenous_sel_len")
 
 
 ################################################################################
@@ -33,6 +37,7 @@ outputs_path <- "../results/a_skj_homogenous_sel_len"
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## Prepare simulated VB pars, and those from operating model
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 om_vb_pars <- readRDS(file.path(outputs_path, "om_VB_pars.RDS"))
 simulated_vb_pars <- readRDS(file.path(outputs_path, "simulated_VB_pars.RDS"))
@@ -44,23 +49,44 @@ simulated_vb_pars <- do.call(c, simulated_vb_pars)
 simulated_vb_pars <- lapply(simulated_vb_pars, get_fitted_mod_pars)
 simulated_vb_pars <- bind_rows(simulated_vb_pars)
 
-## back transform parameters to natural scale
-simulated_vb_pars <- simulated_vb_pars %>%
-    mutate(., L_inf = exp(log_L_inf), k = exp(log_k), t_0 = - exp(log_t_0))
+## if required, back transform parameters to natural scale
+if(all("log_L_inf" %in% colnames(simulated_vb_pars), "log_k" %in% colnames(simulated_vb_pars))) {
+  simulated_vb_pars <- simulated_vb_pars %>%
+    mutate(., L_inf = exp(log_L_inf), k = exp(log_k))
+}
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## Plots of VB pars against 'true' values
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 sampling_rates <- unique(simulated_vb_pars$sampling_rate)
+sampling_schemes <- unique(simulated_vb_pars$sampling_scheme)
 
+## prepare simulated VB pars
 plt_data <- simulated_vb_pars %>%
   select(., sampling_scheme, sampling_rate, samples, id_draw, L_inf, k, t_0) %>%
   pivot_longer(., cols = c(L_inf, k, t_0), names_to = "par", values_to = "value")
 
-plt_data %>% ggplot(.) +
-  geom_violin(aes(x = factor(sampling_rate, levels = sampling_rates), y = value)) +
-  facet_grid(rows = vars(par), cols = vars(sampling_scheme), scales = "free_y")
+## generate summary statistics to use for boxplots
+plt_data <- plt_data %>% group_by(., sampling_scheme, sampling_rate, par) %>%
+  summary_fn_boxplot(., value, na.rm = TRUE) %>% ungroup(.)
+
+## reformat OM parameter estimates to add to plots
+plt_om_data <- om_vb_pars %>%
+  pivot_longer(., cols = c(L_inf, k, t_0), names_to = "par", values_to = "value") %>%
+  expand_grid(sampling_scheme = sampling_schemes, .)
+
+## make plot of simulated VB pars
+plt <- plt_data %>% ggplot(.) +
+  geom_boxplot(aes(x = factor(sampling_rate, levels = sampling_rates),
+                   ymin = lq, lower = lmq, middle = mq, upper = umq, ymax = uq), stat = "identity") +
+  facet_grid(rows = vars(par), cols = vars(sampling_scheme), scales = "free_y") +
+  xlab("Sampling rate (average per length class)")
+
+## and add true values
+plt <- plt + geom_hline(aes(yintercept = value), linewidth = 0.75, alpha = 0.5, data = plt_om_data)
+ggsave("a_VB_par_estimates.png", width = 10, height = 8, units = "in", path = outputs_path)
 
 
 ################################################################################
