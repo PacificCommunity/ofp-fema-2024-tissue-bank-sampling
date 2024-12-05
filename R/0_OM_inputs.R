@@ -144,7 +144,8 @@ skj_min_len <- skj_lf_range["LFFirst"]
 ## cm below upper limit of last length class
 skj_max_len <- skj_min_len + (skj_lf_range["LFIntervals"] * skj_lf_range["LFWidth"]) - 1
 
-skj_len_classes <- seq(skj_min_len, skj_max_len, by = skj_lf_range["LFWidth"])
+## will use 1cm length classes in operating model
+skj_len_classes <- seq(skj_min_len, skj_max_len, by = 1L)
 
 
 ################################################################################
@@ -275,7 +276,8 @@ bet_min_len <- bet_lf_range["LFFirst"]
 ## cm below upper limit of last length class
 bet_max_len <- bet_min_len + (bet_lf_range["LFIntervals"] * bet_lf_range["LFWidth"]) - 1
 
-bet_len_classes <- seq(bet_min_len, bet_max_len, by = bet_lf_range["LFWidth"])
+## will use 1cm length classes in operating model
+bet_len_classes <- seq(bet_min_len, bet_max_len, by = 1L)
 
 
 ################################################################################
