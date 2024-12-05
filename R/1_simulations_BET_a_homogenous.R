@@ -325,7 +325,12 @@ om_sel_len <- mfcl_pop_len %>%
 ## and calculate weighted selectivity by length class (across age classes)
 om_sel_len <- om_sel_len %>%
   group_by(., id_fishery, len_class) %>%
-  summarise(., sel_f = sum(sel_f * n) / sum(n)) %>% data.frame(.)
+  summarise(., sel_f = if_else(sum(n) == 0, NA, sum(sel_f * n) / sum(n))) %>% data.frame(.)
+
+## fill NAs, using the selectivity for the last length class with non-NA value
+om_sel_len <- om_sel_len %>%
+  group_by(., id_fishery) %>%
+  fill(., sel_f) %>% data.frame(.)
 
 ## rescale to have a max of one
 om_sel_len <- om_sel_len %>%
