@@ -144,8 +144,9 @@ skj_min_len <- skj_lf_range["LFFirst"]
 ## cm below upper limit of last length class
 skj_max_len <- skj_min_len + (skj_lf_range["LFIntervals"] * skj_lf_range["LFWidth"]) - 1
 
-## will use 1cm length classes in operating model
-skj_len_classes <- seq(skj_min_len, skj_max_len, by = 1L)
+## use 1cm length classes
+skj_len_interval <- 1L
+skj_len_classes <- seq(skj_min_len, skj_max_len, by = skj_len_interval)
 
 
 ################################################################################
@@ -158,6 +159,7 @@ make_folder(data_path)
 skj_lw_pars <- lw_pars %>% filter(., sp_code %in% "SKJ")
 skj_vb_pars <- vb_pars %>% filter(., sp_code %in% "SKJ")
 
+saveRDS(skj_len_interval, file = file.path(data_path, "skj_len_interval.rds"))
 saveRDS(skj_lw_pars, file = file.path(data_path, "skj_lw_pars.rds"))
 saveRDS(skj_vb_pars, file = file.path(data_path, "skj_vb_pars.rds"))
 saveRDS(skj_len_classes, file = file.path(data_path, "skj_len_classes.rds"))
@@ -276,8 +278,9 @@ bet_min_len <- bet_lf_range["LFFirst"]
 ## cm below upper limit of last length class
 bet_max_len <- bet_min_len + (bet_lf_range["LFIntervals"] * bet_lf_range["LFWidth"]) - 1
 
-## will use 1cm length classes in operating model
-bet_len_classes <- seq(bet_min_len, bet_max_len, by = 1L)
+## use 1cm length classes
+bet_len_interval <- 1L
+bet_len_classes <- seq(bet_min_len, bet_max_len, by = bet_len_interval)
 
 
 ################################################################################
@@ -290,6 +293,7 @@ make_folder(data_path)
 bet_lw_pars <- lw_pars %>% filter(., sp_code %in% "BET")
 bet_vb_pars <- vb_pars %>% filter(., sp_code %in% "BET")
 
+saveRDS(bet_len_interval, file = file.path(data_path, "bet_len_interval.rds"))
 saveRDS(bet_lw_pars, file = file.path(data_path, "bet_lw_pars.rds"))
 saveRDS(bet_vb_pars, file = file.path(data_path, "bet_vb_pars.rds"))
 saveRDS(bet_len_classes, file = file.path(data_path, "bet_len_classes.rds"))
