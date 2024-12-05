@@ -122,10 +122,10 @@ mfcl_q_f %>% filter(., is.na(q_f))
 mfcl_q_f <- mfcl_q_f %>% filter(., !is.na(q_f))
 ## remove records with NAs
 
-## average across years
+## average across period of interest
 mfcl_q_f <- mfcl_q_f %>%
   group_by(., id_fishery, qtr) %>%
-  summarise(., q_f = sum(q_f) / om_n_years) %>% data.frame(.)
+  summarise(., q_f = mean(q_f)) %>% data.frame(.)
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -152,10 +152,10 @@ om_pop_age <- om_pop_age %>% filter(., year >= om_year_min, year <= om_year_max)
 ## check for NAs
 om_pop_age %>% filter(., is.na(n))
 
-## average across years
+## average across period of interest
 om_pop_age <- om_pop_age %>%
   group_by(., area, qtr, age_class) %>%
-  summarise(., n = sum(n) / om_n_years) %>% data.frame(.)
+  summarise(., n = mean(n)) %>% data.frame(.)
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
