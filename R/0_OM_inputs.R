@@ -34,9 +34,13 @@ lw_pars[lw_pars$sp_code %in% "BET", c("a", "b")] <- c(3.0634e-5, 2.9324)
 
 vb_pars <- data.frame(sp_code = c("SKJ", "YFT", "BET"), L_inf = NA, k = NA, t_0 = NA)
 
-## parameters from 2022 assessment
+## parameters from 2022 SKJ assessment
 ##  - diagnostic model with internal growth estimation (see Figure 15)
 vb_pars[vb_pars$sp_code %in% "SKJ", c("L_inf", "k", "t_0")] <- c(86.4, 0.215, -0.422)
+
+## parameters from 2023 BET assessment
+##  - diagnostic model with internal growth estimation (see Figure 16)
+vb_pars[vb_pars$sp_code %in% "BET", c("L_inf", "k", "t_0")] <- c(150.3, 0.113, -0.496)
 
 
 ################################################################################
