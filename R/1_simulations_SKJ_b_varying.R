@@ -56,14 +56,14 @@ assign_id_growth_prob <- function(x, a, b) {
   # for western and central temperate regions, assign proxy region IDs
   x[x %in% c(1, 3)] <- 5
   x[x %in% c(2, 4)] <- 7.5
-
+  
   if(max(a + abs(b)) > 1) stop("reduce strength of gradient! prob > 1")
   if(min(a - abs(b)) < 0) stop("reduce strength of gradient! prob < 0")
-
+  
   ## rescale area ID to go from 0 to 1
   x_range <- range(x, na.rm = TRUE)
   x <- (x - x_range[1]) / (x_range[2] - x_range[1])
-
+  
   a + b * x
 }
 
@@ -76,7 +76,8 @@ assign_id_growth_prob <- function(x, a, b) {
 ## read in input files
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-om_lf_range <- readRDS(file = file.path(data_path, paste0(tolower(sp_id), "_lf_range.rds")))
+om_len_interval <- readRDS(file = file.path(data_path, paste0(tolower(sp_id), "_len_interval.rds")))
+om_len_classes <- readRDS(file = file.path(data_path, paste0(tolower(sp_id), "_len_classes.rds")))
 om_lw_pars <- readRDS(file = file.path(data_path, paste0(tolower(sp_id), "_lw_pars.rds")))
 
 mfcl_vb_pars <- readRDS(file = file.path(data_path, paste0(tolower(sp_id), "_vb_pars.rds")))
@@ -180,7 +181,7 @@ om_pop_age <- om_pop_age %>%
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## average weight by length class
 
-om_avg_weight <- data.frame(sp_code = sp_id, len_class = om_lf_range)
+om_avg_weight <- data.frame(sp_code = sp_id, len_class = om_len_classes)
 om_avg_weight <- om_avg_weight %>% left_join(., om_lw_pars, by = "sp_code") %>%
   mutate(., avg_kg = a * (len_class + 0.5) ^ b)
 om_avg_weight <- om_avg_weight %>% select(., len_class, avg_kg)
@@ -212,17 +213,17 @@ om_len_at_age <- mfcl_cv_len %>% mutate(., sp_code = sp_id) %>%
 
 ## use a slightly broader upper range of length classes when estimating probabilities
 ##  - then assume largest size class from assessment is a plus group
-om_lf_range_estimate <- min(om_lf_range):floor(max(om_lf_range * 1.2))
+om_lf_range_estimate <- seq(min(om_len_classes), floor(max(om_len_classes * 1.2)), by = om_len_interval)
 
 ## estimate probabilities
 mfcl_age_to_len <- mfcl_len_at_age %>%
   expand_grid(., len_class = om_lf_range_estimate) %>%
-  mutate(., p_len_class = pnorm(len_class + 1, mean = mean_len, sd = cv_len * mean_len) -
+  mutate(., p_len_class = pnorm(len_class + om_len_interval, mean = mean_len, sd = cv_len * mean_len) -
            pnorm(len_class, mean = mean_len, sd = cv_len * mean_len))
 mfcl_age_to_len <- mfcl_age_to_len %>% select(., - mean_len, - cv_len)
 
 ## and make largest length class in assessment a plus group
-mfcl_age_to_len <- mfcl_age_to_len %>% mutate(., len_class = pmin(len_class, max(om_lf_range)))
+mfcl_age_to_len <- mfcl_age_to_len %>% mutate(., len_class = pmin(len_class, max(om_len_classes)))
 mfcl_age_to_len <- mfcl_age_to_len %>% group_by(., age_class, len_class) %>%
   summarise(., p_len_class = sum(p_len_class)) %>% data.frame(.)
 
@@ -241,12 +242,12 @@ mfcl_age_to_len <- mfcl_age_to_len %>% group_by(., age_class) %>%
 ## estimate probabilities
 om_age_to_len <- om_len_at_age %>%
   expand_grid(., len_class = om_lf_range_estimate) %>%
-  mutate(., p_len_class = pnorm(len_class + 1, mean = mean_len, sd = cv_len * mean_len) -
+  mutate(., p_len_class = pnorm(len_class + om_len_interval, mean = mean_len, sd = cv_len * mean_len) -
            pnorm(len_class, mean = mean_len, sd = cv_len * mean_len))
 om_age_to_len <- om_age_to_len %>% select(., - mean_len, - cv_len)
 
 ## and make largest length class in assessment a plus group
-om_age_to_len <- om_age_to_len %>% mutate(., len_class = pmin(len_class, max(om_lf_range)))
+om_age_to_len <- om_age_to_len %>% mutate(., len_class = pmin(len_class, max(om_len_classes)))
 om_age_to_len <- om_age_to_len %>% group_by(., id_growth, age_class, len_class) %>%
   summarise(., p_len_class = sum(p_len_class)) %>% data.frame(.)
 
