@@ -282,8 +282,8 @@ bet_min_len <- bet_lf_range["LFFirst"]
 ## cm below upper limit of last length class
 bet_max_len <- bet_min_len + (bet_lf_range["LFIntervals"] * bet_lf_range["LFWidth"]) - 1
 
-## use 1cm length classes
-bet_len_interval <- 1L
+## use 2cm length classes
+bet_len_interval <- 2L
 bet_len_classes <- seq(bet_min_len, bet_max_len, by = bet_len_interval)
 
 
