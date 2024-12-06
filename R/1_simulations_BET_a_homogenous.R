@@ -340,7 +340,7 @@ om_sel_len <- om_sel_len %>%
 ## estimated length-class specific selectivities (for comparison with assessment report)
 om_sel_len %>% ggplot(.) +
   geom_line(aes(x = len_class, y = sel_f), linewidth = 0.75) +
-  facet_wrap(vars(id_fishery), ncol = 2) +
+  facet_wrap(vars(id_fishery), ncol = 3) +
   xlab("Length class (cm)") + ylab("Selectivity")
 
 graphics.off()
@@ -415,7 +415,7 @@ n_draws <- 1E2
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## age-based selectivities
 
-outputs_path <- "../results/a_skj_homogenous_sel_age"
+outputs_path <- paste0("../results/a_", tolower(sp_id), "_homogenous_sel_age")
 make_folder(outputs_path, recursive = TRUE)
 
 st.time <- proc.time()
@@ -440,7 +440,7 @@ sfRemoveAll()
 sfStop()
 
 proc.time() - st.time
-## c. 4 minutes with 100 draws and 4 cores
+## c. 15 minutes with 100 draws and 4 cores
 
 ## save simulated VB parameters and OM VB pars
 saveRDS(om_vb_pars, file = file.path(outputs_path, "om_VB_pars.RDS"))
@@ -451,7 +451,7 @@ saveRDS(draws_age, file = file.path(outputs_path, "simulated_VB_pars.RDS"))
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## length-based selectivities
 
-outputs_path <- "../results/a_skj_homogenous_sel_len"
+outputs_path <- paste0("../results/a_", tolower(sp_id), "_homogenous_sel_len")
 make_folder(outputs_path, recursive = TRUE)
 
 st.time <- proc.time()
