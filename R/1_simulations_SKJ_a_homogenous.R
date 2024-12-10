@@ -403,7 +403,7 @@ om_pop_age %>% group_by(., age_class) %>% summarise(., n = sum(n / 1E6)) %>%
   ggplot() +
   geom_bar(aes(x = factor(age_class, levels = om_age_classes), weight = prop), fill = "#2c7fb8") +
   xlab("Age (quarters)") + ylab("Proportion (individuals)")
-ggsave("om_pop_by_age.png", path = outputs_path, width = 8, height = 6, units = "in")
+ggsave("a_om_pop_by_age.png", path = outputs_path, width = 8, height = 6, units = "in")
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -420,7 +420,7 @@ plt_dat %>% ggplot(.) +
   geom_line(aes(x = age_class, y = median), linewidth = 0.75) +
   xlab("Age (quarters)") + ylab("Length (cm)") +
   coord_cartesian(ylim = c(0, NA))
-ggsave("om_growth.png", path = outputs_path, width = 8, height = 6, units = "in")
+ggsave("a_om_growth.png", path = outputs_path, width = 8, height = 6, units = "in")
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -432,8 +432,7 @@ om_pop_len %>% mutate(len_class = em_len_interval * floor(len_class / em_len_int
   ggplot() +
   geom_bar(aes(x = factor(len_class, levels = om_len_classes), weight = prop), fill = "#2c7fb8") +
   xlab("Length class") + ylab("Proportion (individuals)")
-
-ggsave("om_pop_by_len.png", path = outputs_path, width = 8, height = 6, units = "in")
+ggsave("a_om_pop_by_len.png", path = outputs_path, width = 8, height = 6, units = "in")
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -443,7 +442,7 @@ om_sel_age %>% ggplot(.) +
   geom_line(aes(x = age_class, y = sel_f), linewidth = 0.75) +
   facet_wrap(vars(id_fishery), ncol = 2) +
   xlab("Age (quarters)") + ylab("Selectivity")
-ggsave("om_sel_age.png", path = outputs_path, width = 8, height = 8, units = "in")
+ggsave("a_om_sel_age.png", path = outputs_path, width = 8, height = 8, units = "in")
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -453,7 +452,7 @@ om_sel_len %>% ggplot(.) +
   geom_line(aes(x = len_class, y = sel_f), linewidth = 0.75) +
   facet_wrap(vars(id_fishery), ncol = 2) +
   xlab("Length class (cm)") + ylab("Selectivity")
-ggsave("om_sel_len.png", path = outputs_path, width = 8, height = 8, units = "in")
+ggsave("a_om_sel_len.png", path = outputs_path, width = 8, height = 8, units = "in")
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -468,7 +467,7 @@ plt_draw_catch %>% group_by(., age_class) %>% summarise(., catch = sum(catch)) %
   ggplot() +
   geom_bar(aes(x = factor(age_class, levels = om_age_classes), weight = prop), fill = "#2c7fb8") +
   xlab("Age (quarters)") + ylab("Proportion (individuals)")
-ggsave("em_example_catch_age.png", path = outputs_path, width = 8, height = 8, units = "in")
+ggsave("b_em_example_catch_age.png", path = outputs_path, width = 8, height = 6, units = "in")
 
 ## plot of catch by length class
 plt_draw_catch %>% group_by(., em_len_class) %>% summarise(., catch = sum(catch)) %>%
@@ -476,7 +475,7 @@ plt_draw_catch %>% group_by(., em_len_class) %>% summarise(., catch = sum(catch)
   ggplot() +
   geom_bar(aes(x = factor(em_len_class, levels = om_len_classes), weight = prop), fill = "#2c7fb8") +
   xlab("Length class") + ylab("Proportion (individuals)")
-ggsave("em_example_catch_len.png", path = outputs_path, width = 8, height = 8, units = "in")
+ggsave("b_em_example_catch_len.png", path = outputs_path, width = 8, height = 6, units = "in")
 
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -504,7 +503,7 @@ plt <- plt_draw_samples %>%
   xlab("Age (quarters)") + ylab("Length class") +
   coord_cartesian(ylim = range(om_len_classes))
 plt + geom_line(aes(x = age, y = len), linewidth = 0.75, alpha = 0.5, data = est_vb_growth)
-ggsave("em_example_samples_POS.png", path = outputs_path, width = 8, height = 6, units = "in")
+ggsave("b_em_example_samples_POS.png", path = outputs_path, width = 8, height = 6, units = "in")
 
 
 ################################################################################
