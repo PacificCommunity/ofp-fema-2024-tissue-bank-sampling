@@ -166,7 +166,7 @@ draw_samples_pos <- function(x, n_per_bin) {
 }
 
 ## simulate sampling with selectivity at age, from homogenous population
-simulate_homogenous_sel_age <- function(sampling_rate, id_draw) {
+simulate_homogenous_sel_age <- function(sampling_rate, id_draw, initial_pars) {
   ## draw catch
   catch_draw <- draw_catch_age(om_p_catch_age, om_pop_len)
   catch_draw <- catch_draw %>% mutate(., em_len_class = em_len_interval * floor(len_class / em_len_interval))
@@ -180,17 +180,13 @@ simulate_homogenous_sel_age <- function(sampling_rate, id_draw) {
 
   ## i - FOS
   mod_data <- list(Y = samples_fos$em_len_class + 0.5 * em_len_interval, x = samples_fos$age_class)
-  pars <- parameters <- list(L_inf = 50, k = 0.1, t_0 = 0, sigma_a = 0, sigma_b = 0)
-
-  obj <- MakeADFun(mod_data, pars, DLL = "fit_vb_growth")
+  obj <- MakeADFun(mod_data, initial_pars, DLL = "fit_vb_growth")
   ##opt_fos <- optim(obj$par, obj$fn, obj$gr, method = "BFGS", control = list(maxit = 5E2))
   opt_fos <- nlminb(obj$par, obj$fn, obj$gr, control = list(eval.max = 5E2, iter.max = 2.5E2))
   
   ## ii - POS
   mod_data <- list(Y = samples_pos$em_len_class + 0.5 * em_len_interval, x = samples_pos$age_class)
-  pars <- parameters <- list(L_inf = 50, k = 0.1, t_0 = 0, sigma_a = 0, sigma_b = 0)
-  
-  obj <- MakeADFun(mod_data, pars, DLL = "fit_vb_growth")
+  obj <- MakeADFun(mod_data, initial_pars, DLL = "fit_vb_growth")
   ##opt_pos <- optim(obj$par, obj$fn, obj$gr, method = "BFGS", control = list(maxit = 5E2))
   opt_pos <- nlminb(obj$par, obj$fn, obj$gr, control = list(eval.max = 5E2, iter.max = 2.5E2))
   
@@ -212,7 +208,7 @@ simulate_homogenous_sel_age <- function(sampling_rate, id_draw) {
 }
 
 ## simulate sampling with selectivity at age, from homogenous population
-simulate_homogenous_sel_len <- function(sampling_rate, id_draw) {
+simulate_homogenous_sel_len <- function(sampling_rate, id_draw, initial_pars) {
   ## draw catch
   catch_draw <- draw_catch_len(om_p_catch_len, om_pop_len)
   catch_draw <- catch_draw %>% mutate(., em_len_class = em_len_interval * floor(len_class / em_len_interval))
@@ -226,17 +222,13 @@ simulate_homogenous_sel_len <- function(sampling_rate, id_draw) {
 
   ## i - FOS
   mod_data <- list(Y = samples_fos$em_len_class + 0.5 * em_len_interval, x = samples_fos$age_class)
-  pars <- parameters <- list(L_inf = 50, k = 0.1, t_0 = 0, sigma_a = 0, sigma_b = 0)
-  
-  obj <- MakeADFun(mod_data, pars, DLL = "fit_vb_growth")
+  obj <- MakeADFun(mod_data, initial_pars, DLL = "fit_vb_growth")
   ##opt_fos <- optim(obj$par, obj$fn, obj$gr, method = "BFGS", control = list(maxit = 5E2))
   opt_fos <- nlminb(obj$par, obj$fn, obj$gr, control = list(eval.max = 5E2, iter.max = 2.5E2))
   
   ## ii - POS
   mod_data <- list(Y = samples_pos$em_len_class + 0.5 * em_len_interval, x = samples_pos$age_class)
-  pars <- parameters <- list(L_inf = 50, k = 0.1, t_0 = 0, sigma_a = 0, sigma_b = 0)
-  
-  obj <- MakeADFun(mod_data, pars, DLL = "fit_vb_growth")
+  obj <- MakeADFun(mod_data, initial_pars, DLL = "fit_vb_growth")
   ##opt_pos <- optim(obj$par, obj$fn, obj$gr, method = "BFGS", control = list(maxit = 5E2))
   opt_pos <- nlminb(obj$par, obj$fn, obj$gr, control = list(eval.max = 5E2, iter.max = 2.5E2))
   
@@ -258,8 +250,8 @@ simulate_homogenous_sel_len <- function(sampling_rate, id_draw) {
 }
 
 ## wrapper fn to run simulations for a given sampling rate
-simulate_wrapper <- function(sampling_rate, n_draws, simulate_fn) {
-  lapply(1:n_draws, function(x) simulate_fn(sampling_rate, id_draw = x))
+simulate_wrapper <- function(sampling_rate, simulate_fn, draws, ...) {
+  lapply(1:draws, function(x) simulate_fn(sampling_rate, id_draw = x, ...))
 }
 
 
