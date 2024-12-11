@@ -283,7 +283,7 @@ bet_min_len <- bet_lf_range["LFFirst"]
 bet_max_len <- bet_min_len + (bet_lf_range["LFIntervals"] * bet_lf_range["LFWidth"]) - 1
 
 ## set length interval and length classes
-bet_len_interval <- 1L
+bet_len_interval <- 2L
 bet_len_classes <- seq(bet_min_len, bet_max_len, by = bet_len_interval)
 
 
