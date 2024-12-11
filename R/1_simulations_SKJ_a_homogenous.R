@@ -387,13 +387,15 @@ n_draws <- 1E2
 
 
 ################################################################################
-## summary plots to visualise OM inputs
+## summary plots to visualise OM and EM inputs
 ################################################################################
 
 outputs_path <- "../results/a_skj_homogenous_OM_inputs"
 make_folder(outputs_path, recursive = TRUE)
 
 om_age_classes <- unique(om_sel_age$age_class)
+em_len_classes <- unique(em_len_interval * floor(om_len_classes / em_len_interval))
+
 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## population by age-class
@@ -426,11 +428,11 @@ ggsave("a_om_growth.png", path = outputs_path, width = 8, height = 6, units = "i
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## population by length-class
 
-om_pop_len %>% mutate(len_class = em_len_interval * floor(len_class / em_len_interval)) %>%
-  group_by(., len_class) %>% summarise(., n = sum(n / 1E6)) %>%
+om_pop_len %>% mutate(em_len_class = em_len_interval * floor(len_class / em_len_interval)) %>%
+  group_by(., em_len_class) %>% summarise(., n = sum(n / 1E6)) %>%
   mutate(., prop = n / sum(n)) %>%
   ggplot() +
-  geom_bar(aes(x = factor(len_class, levels = om_len_classes), weight = prop), fill = "#2c7fb8") +
+  geom_bar(aes(x = factor(em_len_class, levels = em_len_classes), weight = prop), fill = "#2c7fb8") +
   xlab("Length class") + ylab("Proportion (individuals)")
 ggsave("a_om_pop_by_len.png", path = outputs_path, width = 8, height = 6, units = "in")
 
@@ -473,7 +475,7 @@ ggsave("b_em_example_catch_age.png", path = outputs_path, width = 8, height = 6,
 plt_draw_catch %>% group_by(., em_len_class) %>% summarise(., catch = sum(catch)) %>%
   mutate(., prop = catch / sum(catch)) %>%
   ggplot() +
-  geom_bar(aes(x = factor(em_len_class, levels = om_len_classes), weight = prop), fill = "#2c7fb8") +
+  geom_bar(aes(x = factor(em_len_class, levels = em_len_classes), weight = prop), fill = "#2c7fb8") +
   xlab("Length class") + ylab("Proportion (individuals)")
 ggsave("b_em_example_catch_len.png", path = outputs_path, width = 8, height = 6, units = "in")
 
