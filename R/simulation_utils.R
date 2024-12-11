@@ -35,13 +35,17 @@ set_growth_class_probs <- function(data, a_int, b_slope) {
 
 ## get length interval for estimation model
 ##   - based on rule of thumb from Coggins et al. 2013 (doi: 10.1080/00028487.2013.768550)
-get_em_len_interval <- function(L_inf) {
+get_em_len_interval <- function(L_inf, om_len_interval) {
   x <- L_inf / 30
 
   ## select a practical length class interval
-  if(x < 3) return(2)
-  if(x < 7) return(5)
-  5 * round(x / 5)
+  x <- case_when(x < 3 ~ 2L, x < 7 ~ 5L, .default = 5 * round(x / 5))
+  
+  ## if OM length interval is 2cm, force EM length interval to be a multiple of 2
+  ##  - so that each OM length class maps to only one EM length class
+  if((x %% 2) != 0 & om_len_interval == 2) x <- 1 + x
+  
+  return(x)
 }
 
 ## draw catch at random from population with age-based selectivity

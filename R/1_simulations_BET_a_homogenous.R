@@ -396,9 +396,7 @@ om_p_catch_len <- om_p_catch_len %>%
 compile("../TMB/fit_vb_growth.cpp")
 
 ## define length bin interval width in estimation model
-##  - if OM model has 2cm length class intervals, force EM length class interval to be even
-em_len_interval <- get_em_len_interval(mfcl_vb_pars$L_inf)
-if((em_len_interval %% 2) != 0 & om_len_interval == 2) em_len_interval <- 1 + em_len_interval
+em_len_interval <- get_em_len_interval(mfcl_vb_pars$L_inf, om_len_interval)
 
 ## define target sampling rates
 ## - expressed as a number of samples per length class of sampling
