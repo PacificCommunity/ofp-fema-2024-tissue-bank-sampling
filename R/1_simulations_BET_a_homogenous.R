@@ -408,6 +408,128 @@ n_draws <- 1E2
 
 
 ################################################################################
+## summary plots to visualise OM inputs
+################################################################################
+
+outputs_path <- "../results/a_bet_homogenous_OM_inputs"
+make_folder(outputs_path, recursive = TRUE)
+
+om_age_classes <- unique(om_sel_age$age_class)
+em_len_classes <- unique(em_len_interval * floor(om_len_classes / em_len_interval))
+
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## population by age-class
+
+om_pop_age %>% group_by(., age_class) %>% summarise(., n = sum(n / 1E6)) %>%
+  mutate(., prop = n / sum(n)) %>%
+  ggplot() +
+  geom_bar(aes(x = factor(age_class, levels = om_age_classes), weight = prop), fill = "#2c7fb8") +
+  xlab("Age (quarters)") + ylab("Proportion (individuals)")
+ggsave("a_om_pop_by_age.png", path = outputs_path, width = 8, height = 6, units = "in")
+
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## growth curve
+
+plt_dat <- om_age_to_len %>% group_by(., age_class) %>%
+  summarise(., median = ggdist::weighted_quantile(len_class, 0.5, weight = p_len_class),
+            lq = ggdist::weighted_quantile(len_class, 0.025, weight = p_len_class),
+            uq = ggdist::weighted_quantile(len_class, 0.975, weight = p_len_class)) %>%
+  data.frame(.)
+
+plt_dat %>% ggplot(.) +
+  geom_ribbon(aes(x = age_class, ymin = lq, ymax = uq), fill = "#2c7fb8", alpha = 0.5) +
+  geom_line(aes(x = age_class, y = median), linewidth = 0.75) +
+  xlab("Age (quarters)") + ylab("Length (cm)") +
+  coord_cartesian(ylim = c(0, NA))
+ggsave("a_om_growth.png", path = outputs_path, width = 8, height = 6, units = "in")
+
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## population by length-class
+
+om_pop_len %>% mutate(em_len_class = em_len_interval * floor(len_class / em_len_interval)) %>%
+  group_by(., em_len_class) %>% summarise(., n = sum(n / 1E6)) %>%
+  mutate(., prop = n / sum(n)) %>%
+  ggplot() +
+  geom_bar(aes(x = factor(em_len_class, levels = em_len_classes), weight = prop), fill = "#2c7fb8") +
+  xlab("Length class") + ylab("Proportion (individuals)")
+ggsave("a_om_pop_by_len.png", path = outputs_path, width = 8, height = 6, units = "in")
+
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## selectivities by age-class
+
+om_sel_age %>% ggplot(.) +
+  geom_line(aes(x = age_class, y = sel_f), linewidth = 0.75) +
+  facet_wrap(vars(id_fishery), ncol = 3) +
+  xlab("Age (quarters)") + ylab("Selectivity")
+ggsave("a_om_sel_age.png", path = outputs_path, width = 8, height = 8, units = "in")
+
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## selectivities by length-class
+
+om_sel_len %>% ggplot(.) +
+  geom_line(aes(x = len_class, y = sel_f), linewidth = 0.75) +
+  facet_wrap(vars(id_fishery), ncol = 3) +
+  xlab("Length class (cm)") + ylab("Selectivity")
+ggsave("a_om_sel_len.png", path = outputs_path, width = 8, height = 8, units = "in")
+
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## an example draw of catch (with selectivity at age)
+
+plt_draw_catch <- draw_catch_age(om_p_catch_age, om_pop_len)
+plt_draw_catch <- plt_draw_catch %>% mutate(., em_len_class = em_len_interval * floor(len_class / em_len_interval))
+
+## plot of catch by age class
+plt_draw_catch %>% group_by(., age_class) %>% summarise(., catch = sum(catch)) %>%
+  mutate(., prop = catch / sum(catch)) %>%
+  ggplot() +
+  geom_bar(aes(x = factor(age_class, levels = om_age_classes), weight = prop), fill = "#2c7fb8") +
+  xlab("Age (quarters)") + ylab("Proportion (individuals)")
+ggsave("b_em_example_catch_age.png", path = outputs_path, width = 8, height = 6, units = "in")
+
+## plot of catch by length class
+plt_draw_catch %>% group_by(., em_len_class) %>% summarise(., catch = sum(catch)) %>%
+  mutate(., prop = catch / sum(catch)) %>%
+  ggplot() +
+  geom_bar(aes(x = factor(em_len_class, levels = em_len_classes), weight = prop), fill = "#2c7fb8") +
+  xlab("Length class") + ylab("Proportion (individuals)")
+ggsave("b_em_example_catch_len.png", path = outputs_path, width = 8, height = 6, units = "in")
+
+
+##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## an example draw of samples from catch (with proportional otolith sampling)
+
+plt_draw_samples <- draw_samples_pos(plt_draw_catch, n_per_bin = 2)
+
+## fit VB model to samples and estimate length at age
+mod_data <- list(Y = plt_draw_samples$em_len_class + 0.5 * em_len_interval, x = plt_draw_samples$age_class)
+pars <- parameters <- list(L_inf = 50, k = 0.1, t_0 = 0, sigma_a = 0, sigma_b = 0)
+
+dyn.load(dynlib("../TMB/fit_vb_growth"))
+obj <- MakeADFun(mod_data, pars, DLL = "fit_vb_growth")
+opt_pos <- nlminb(obj$par, obj$fn, obj$gr, control = list(eval.max = 5E2, iter.max = 2.5E2))
+dyn.unload(dynlib("../TMB/fit_vb_growth"))
+
+est_vb_growth <- data.frame(age = seq(min(om_age_classes), max(om_age_classes), by = 0.1))
+est_vb_growth <- est_vb_growth %>%
+  mutate(., len = vb_growth(age, L_inf = opt_pos$par["L_inf"], k = opt_pos$par["k"], t_0 = opt_pos$par["t_0"]))
+
+## plot samples, and add estimated VB curve
+plt <- plt_draw_samples %>%
+  ggplot() +
+  geom_point(aes(x = age_class, y = em_len_class + 0.5 * em_len_interval), colour = "#2c7fb8", alpha = 0.5) +
+  xlab("Age (quarters)") + ylab("Length class") +
+  coord_cartesian(ylim = range(om_len_classes))
+plt + geom_line(aes(x = age, y = len), linewidth = 0.75, alpha = 0.5, data = est_vb_growth)
+ggsave("b_em_example_samples_POS.png", path = outputs_path, width = 8, height = 6, units = "in")
+
+
+################################################################################
 ## run simulations on a homogenous population
 ##   - i.e., no spatial structure in growth
 ################################################################################
