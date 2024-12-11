@@ -532,7 +532,8 @@ ttt <- sfClusterCall(source, './simulation_utils.R')
 
 sfExport(list = c("om_pop_len", "om_p_catch_age", "em_len_interval"))
 
-draws_age <- sfLapply(sampling_rates, simulate_wrapper, n_draws, simulate_fn = simulate_homogenous_sel_age)
+draws_age <- sfLapply(sampling_rates, simulate_wrapper, simulate_fn = simulate_homogenous_sel_age, draws = n_draws,
+                      initial_pars = list(L_inf = 50, k = 0.1, t_0 = 0, sigma_a = 0, sigma_b = 0))
 draws_age <- unlist(draws_age, recursive = FALSE)
 
 sfRemoveAll()
@@ -568,7 +569,8 @@ ttt <- sfClusterCall(source, './simulation_utils.R')
 
 sfExport(list = c("om_pop_len", "om_p_catch_len", "em_len_interval"))
 
-draws_len <- sfLapply(sampling_rates, simulate_wrapper, n_draws, simulate_fn = simulate_homogenous_sel_len)
+draws_len <- sfLapply(sampling_rates, simulate_wrapper, simulate_fn = simulate_homogenous_sel_len, draws = n_draws,
+                      initial_pars = list(L_inf = 50, k = 0.1, t_0 = 0, sigma_a = 0, sigma_b = 0))
 draws_len <- unlist(draws_len, recursive = FALSE)
 
 sfRemoveAll()
