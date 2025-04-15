@@ -19,6 +19,9 @@ source('simulation_utils.R')
 theme_set(theme_bw())
 theme_update(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
 
+results_path <- "../results"
+make_folder(results_path)
+
 
 ################################################################################
 ## Variables defining operating model inputs for power analysis
@@ -410,7 +413,7 @@ n_draws <- 1E2
 ## summary plots to visualise OM inputs
 ################################################################################
 
-outputs_path <- "../results/a_bet_homogenous_OM_inputs"
+outputs_path <- file.path(results_path, "a_bet_homogenous_OM_inputs")
 make_folder(outputs_path, recursive = TRUE)
 
 om_age_classes <- unique(om_sel_age$age_class)
@@ -536,7 +539,7 @@ ggsave("b_em_example_samples_POS.png", path = outputs_path, width = 8, height = 
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## age-based selectivities
 
-outputs_path <- paste0("../results/a_", tolower(sp_id), "_homogenous_sel_age")
+outputs_path <- file.path(results_path, paste0("a_", tolower(sp_id), "_homogenous_sel_age"))
 make_folder(outputs_path, recursive = TRUE)
 
 st.time <- proc.time()
@@ -573,7 +576,7 @@ saveRDS(draws_age, file = file.path(outputs_path, "simulated_VB_pars.RDS"))
 ##~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ## length-based selectivities
 
-outputs_path <- paste0("../results/a_", tolower(sp_id), "_homogenous_sel_len")
+outputs_path <- file.path(results_path, paste0("a_", tolower(sp_id), "_homogenous_sel_len"))
 make_folder(outputs_path, recursive = TRUE)
 
 st.time <- proc.time()
